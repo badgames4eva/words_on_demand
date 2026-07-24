@@ -20,9 +20,27 @@ const store = {
 function loadStore() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (!d.progress) d.progress = {}; // per-puzzle saved board (guesses + result)
+      return d;
+    }
   } catch (e) { /* fall through to defaults */ }
-  return { streak: 0, played: 0, wins: 0, lastDay: null };
+  return { streak: 0, played: 0, wins: 0, lastDay: null, progress: {} };
+}
+
+// Absolute puzzle number for a given offset from today (also the store key).
+function puzzleIndex(offset) { return dayIndexToday() + offset; }
+
+// Persist the current board so leaving and returning resumes it (no restart /
+// "reroll" of the same word — that would be cheating).
+function saveProgress() {
+  store.data.progress[puzzleIndex(game.roundOffset)] = {
+    guesses: game.guesses.slice(),
+    finished: game.finished,
+    won: game.won,
+  };
+  store.save();
 }
 
 // ---------------------------------------------------------------------------
@@ -260,6 +278,7 @@ function submitGuess() {
     game.finished = true; game.won = false;
     setTimeout(endRound, 700);
   }
+  saveProgress();
 }
 
 // Standard Wordle scoring with duplicate-letter handling.
@@ -324,20 +343,43 @@ function shakeRow() {
 function startRound(offset) {
   game.roundOffset = offset;
   game.answer = extraPuzzle(offset);
-  game.guesses = [];
   game.current = "";
-  game.finished = false;
-  game.won = false;
   game.hintsUsed = 0;
   keyStates = {};
 
   buildBoard();
   buildKeyboard();
 
-  document.getElementById("puzzle-no").textContent = dayIndexToday() + offset;
+  // Resume any saved progress for this exact puzzle, so leaving and coming back
+  // continues the same board instead of restarting it.
+  const saved = store.data.progress[puzzleIndex(offset)];
+  game.guesses = saved ? saved.guesses.slice() : [];
+  game.finished = saved ? saved.finished : false;
+  game.won = saved ? saved.won : false;
+  replayGuesses();
+
+  document.getElementById("puzzle-no").textContent = puzzleIndex(offset);
   document.getElementById("game-streak").textContent = store.data.streak;
 
+  // A puzzle that's already been completed goes straight to its result — no replay.
+  if (game.finished) { renderResult(); showScreen("result"); return; }
+
   showScreen("game");
+}
+
+// Paint saved guesses back onto a fresh board (instant, no flip animation).
+function replayGuesses() {
+  game.guesses.forEach((guess, r) => {
+    const scores = scoreGuess(guess, game.answer);
+    const row = document.querySelector(`.board-row[data-row="${r}"]`);
+    const tiles = row.querySelectorAll(".tile");
+    tiles.forEach((tile, c) => {
+      tile.textContent = guess[c];
+      tile.classList.remove("filled");
+      tile.classList.add(scores[c]);
+    });
+    updateKeyStates(guess, scores);
+  });
 }
 
 function endRound() {
