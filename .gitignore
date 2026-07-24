@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+*.code-workspace
+
+# Logs / temp
+*.log
+/tmp/
+
+# Dependencies (none today — vanilla JS — but future-proofing the Android/tooling phases)
+node_modules/

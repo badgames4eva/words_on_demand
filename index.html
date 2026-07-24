@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Words on Demand — Daily Word Puzzle for TV</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============================ HOME ============================ -->
+  <section id="home" class="screen is-active">
+    <div class="home-inner">
+      <h1 class="logo">WORDS <span>ON DEMAND</span></h1>
+      <p class="tagline">One new word puzzle, every day.</p>
+
+      <div class="stats-row" aria-label="Your stats">
+        <div class="stat">
+          <span class="stat-num" id="home-streak">0</span>
+          <span class="stat-label">Day Streak</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num" id="home-played">0</span>
+          <span class="stat-label">Played</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num" id="home-winpct">0%</span>
+          <span class="stat-label">Win Rate</span>
+        </div>
+      </div>
+
+      <div class="home-actions">
+        <button class="btn btn-primary focusable" data-nav-group="home" id="btn-play">Play Today's Puzzle</button>
+        <button class="btn focusable" data-nav-group="home" id="btn-howto">How to Play</button>
+      </div>
+      <p class="daily-note" id="daily-note"></p>
+    </div>
+  </section>
+
+  <!-- ============================ GAME ============================ -->
+  <section id="game" class="screen">
+    <header class="game-header">
+      <button class="icon-btn focusable" data-nav-group="header" id="btn-back">‹ Back</button>
+      <div class="header-title">Puzzle #<span id="puzzle-no">1</span></div>
+      <div class="header-streak">🔥 <span id="game-streak">0</span></div>
+    </header>
+
+    <div class="board" id="board" aria-label="Guess board"></div>
+
+    <div class="keyboard" id="keyboard" aria-label="On-screen keyboard"></div>
+
+    <p class="hint-bar">
+      <button class="btn btn-ghost focusable" data-nav-group="game-extra" id="btn-hint">
+        💡 Reveal a letter (watch ad)
+      </button>
+    </p>
+  </section>
+
+  <!-- ============================ RESULT ============================ -->
+  <section id="result" class="screen">
+    <div class="result-inner">
+      <h2 id="result-title">Nice!</h2>
+      <p id="result-word" class="result-word"></p>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-num" id="result-streak">0</span><span class="stat-label">Streak</span></div>
+        <div class="stat"><span class="stat-num" id="result-guesses">0</span><span class="stat-label">Guesses</span></div>
+      </div>
+      <div class="result-grid" id="result-grid"></div>
+      <div class="home-actions">
+        <button class="btn btn-primary focusable" data-nav-group="result" id="btn-next">One More Round</button>
+        <button class="btn focusable" data-nav-group="result" id="btn-home">Back to Home</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= AD INTERSTITIAL ======================= -->
+  <section id="ad" class="screen">
+    <div class="ad-inner">
+      <p class="ad-label">Advertisement</p>
+      <div class="ad-box">
+        <div class="ad-fake">Your full-screen video ad plays here</div>
+        <div class="ad-progress"><div class="ad-progress-bar" id="ad-bar"></div></div>
+      </div>
+      <p class="ad-skip" id="ad-skip">Continues in <span id="ad-count">5</span>…</p>
+    </div>
+  </section>
+
+  <!-- ======================= HOW TO PLAY ======================= -->
+  <section id="howto" class="screen">
+    <div class="howto-inner">
+      <h2>How to Play</h2>
+      <ul class="howto-list">
+        <li>Guess the hidden 5-letter word in 6 tries.</li>
+        <li>Use the <strong>D-pad</strong> to move, <strong>OK/Enter</strong> to select a letter.</li>
+        <li><span class="swatch correct"></span> Green = right letter, right spot.</li>
+        <li><span class="swatch present"></span> Yellow = right letter, wrong spot.</li>
+        <li><span class="swatch absent"></span> Gray = not in the word.</li>
+      </ul>
+      <button class="btn btn-primary focusable" data-nav-group="howto" id="btn-howto-back">Got it</button>
+    </div>
+  </section>
+
+  <script src="words.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+/* ============================================================
+   Words on Demand — 10-foot TV UI
+   Design rules from the strategy doc:
+   - Large, high-contrast focus states visible across a room
+   - Everything reachable by 4-way D-pad + OK
+   - No fine text, no pointer-dependent controls
+   ============================================================ */
+
+:root {
+  --bg: #0f1220;
+  --bg-2: #171b2e;
+  --panel: #1e2338;
+  --text: #f4f6ff;
+  --muted: #9aa3c7;
+  --accent: #5b8cff;
+  --accent-2: #7a5bff;
+
+  --correct: #4caf7d;
+  --present: #d8a53a;
+  --absent: #3a4060;
+
+  --focus-ring: #ffd34d;
+
+  /* 10-foot scale: sizes are deliberately large */
+  --tile: 5.2rem;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 18px; }
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at 50% -10%, var(--bg-2), var(--bg) 60%);
+  color: var(--text);
+  min-height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- screen switching ---------- */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 6vw;
+}
+.screen.is-active { display: flex; }
+
+/* ---------- shared buttons ---------- */
+.btn {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--panel);
+  border: 3px solid transparent;
+  border-radius: var(--radius);
+  padding: 1.1rem 2.4rem;
+  cursor: pointer;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.btn-ghost { background: transparent; border: 3px solid var(--absent); }
+
+/* THE focus state — the single most important 10-foot affordance */
+.focusable.is-focused {
+  outline: none;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 6px rgba(255, 211, 77, .35), 0 12px 30px rgba(0,0,0,.4);
+  transform: scale(1.06);
+  background: var(--bg-2);
+}
+.btn-primary.focusable.is-focused {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+/* ============================ HOME ============================ */
+.home-inner { text-align: center; max-width: 900px; }
+.logo {
+  font-size: 5.5rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1;
+}
+.logo span { color: var(--accent); }
+.tagline { font-size: 1.6rem; color: var(--muted); margin-top: .6rem; }
+
+.stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 3.5rem;
+  margin: 3rem 0;
+}
+.stat { display: flex; flex-direction: column; }
+.stat-num { font-size: 3rem; font-weight: 800; }
+.stat-label { font-size: 1.1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+.home-actions { display: flex; flex-direction: column; gap: 1.4rem; align-items: center; }
+.home-actions .btn { min-width: 26rem; }
+.daily-note { margin-top: 2rem; color: var(--muted); font-size: 1.1rem; }
+
+/* ============================ GAME ============================ */
+/* The header is fixed at the top, so the game screen lays content out from the
+   top with padding that clears the header — otherwise the centered board slides
+   up under the "Puzzle #…" title. */
+#game {
+  justify-content: flex-start;
+  padding-top: 10vh;
+}
+.game-header {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 2vh 5vw;
+  z-index: 10;
+}
+.header-title { font-size: 1.6rem; font-weight: 700; }
+.header-streak { font-size: 1.6rem; font-weight: 700; }
+.icon-btn {
+  font-size: 1.3rem; font-weight: 600; color: var(--text);
+  background: transparent; border: 3px solid transparent; border-radius: 10px;
+  padding: .5rem 1rem; cursor: pointer;
+}
+
+.board {
+  display: grid;
+  grid-template-rows: repeat(6, var(--tile));
+  gap: .6rem;
+  margin-bottom: 2.5rem;
+}
+.board-row { display: grid; grid-template-columns: repeat(5, var(--tile)); gap: .6rem; }
+.tile {
+  width: var(--tile); height: var(--tile);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.6rem; font-weight: 800; text-transform: uppercase;
+  border: 3px solid var(--absent);
+  border-radius: 10px;
+  background: var(--bg-2);
+  transition: transform .15s ease, background .3s ease, border-color .3s ease;
+}
+.tile.filled { border-color: var(--muted); transform: scale(1.04); }
+.tile.correct { background: var(--correct); border-color: var(--correct); }
+.tile.present { background: var(--present); border-color: var(--present); }
+.tile.absent  { background: var(--absent);  border-color: var(--absent); }
+
+/* ---------- keyboard ---------- */
+.keyboard { display: flex; flex-direction: column; gap: .5rem; align-items: center; }
+.kb-row { display: flex; gap: .5rem; }
+.key {
+  min-width: 3.4rem; height: 4rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 700; text-transform: uppercase;
+  background: var(--panel); color: var(--text);
+  border: 3px solid transparent; border-radius: 10px;
+  cursor: pointer;
+}
+.key.key-wide { min-width: 6rem; font-size: 1.1rem; }
+.key.correct { background: var(--correct); }
+.key.present { background: var(--present); }
+.key.absent  { background: var(--absent); opacity: .55; }
+
+.hint-bar { margin-top: 2rem; }
+
+/* ============================ RESULT ============================ */
+.result-inner { text-align: center; max-width: 800px; }
+#result-title { font-size: 3.4rem; font-weight: 800; }
+.result-word { font-size: 1.8rem; color: var(--muted); margin: .5rem 0 1.5rem; }
+.result-word strong { color: var(--accent); text-transform: uppercase; letter-spacing: .1em; }
+.result-grid { display: inline-grid; gap: .25rem; margin: 1.5rem 0 2.5rem; }
+.result-grid .mini-row { display: grid; grid-template-columns: repeat(5, 1.6rem); gap: .25rem; }
+.result-grid .mini { width: 1.6rem; height: 1.6rem; border-radius: 4px; background: var(--absent); }
+.result-grid .mini.correct { background: var(--correct); }
+.result-grid .mini.present { background: var(--present); }
+
+/* ============================ AD ============================ */
+.ad-inner { text-align: center; width: 100%; max-width: 1000px; }
+.ad-label { color: var(--muted); text-transform: uppercase; letter-spacing: .2em; font-size: 1rem; margin-bottom: 1rem; }
+.ad-box {
+  background: #000; border-radius: var(--radius); overflow: hidden;
+  aspect-ratio: 16 / 9; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; position: relative;
+}
+.ad-fake { font-size: 2rem; color: #6b7290; }
+.ad-progress { position: absolute; bottom: 0; left: 0; right: 0; height: 8px; background: #222; }
+.ad-progress-bar { height: 100%; width: 0%; background: var(--accent); transition: width .1s linear; }
+.ad-skip { margin-top: 1.5rem; font-size: 1.3rem; color: var(--muted); }
+
+/* ============================ HOW TO ============================ */
+.howto-inner { max-width: 800px; }
+.howto-inner h2 { font-size: 3rem; margin-bottom: 1.5rem; }
+.howto-list { list-style: none; font-size: 1.5rem; line-height: 2.4; }
+.swatch { display: inline-block; width: 1.4rem; height: 1.4rem; border-radius: 4px; vertical-align: middle; margin-right: .3rem; }
+.swatch.correct { background: var(--correct); }
+.swatch.present { background: var(--present); }
+.swatch.absent { background: var(--absent); }
+.howto-inner .btn { margin-top: 2rem; }
+
+/* ---------- toast (invalid word etc.) ---------- */
+.toast {
+  position: fixed; top: 12vh; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg); font-weight: 700; font-size: 1.3rem;
+  padding: 1rem 2rem; border-radius: 10px; opacity: 0; pointer-events: none;
+  transition: opacity .2s ease; z-index: 100;
+}
+.toast.show { opacity: 1; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+.board-row.shake { animation: shake .4s ease; }
