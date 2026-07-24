@@ -39,6 +39,8 @@ function saveProgress() {
     guesses: game.guesses.slice(),
     finished: game.finished,
     won: game.won,
+    hintsUsed: game.hintsUsed,
+    answer: game.answer, // stored so history can render without re-deriving
   };
   store.save();
 }
@@ -357,7 +359,6 @@ function startRound(offset) {
   game.roundOffset = offset;
   game.answer = extraPuzzle(offset);
   game.current = "";
-  game.hintsUsed = 0;
   keyStates = {};
 
   buildBoard();
@@ -369,6 +370,7 @@ function startRound(offset) {
   game.guesses = saved ? saved.guesses.slice() : [];
   game.finished = saved ? saved.finished : false;
   game.won = saved ? saved.won : false;
+  game.hintsUsed = saved ? (saved.hintsUsed || 0) : 0;
   replayGuesses();
 
   document.getElementById("puzzle-no").textContent = puzzleIndex(offset);
@@ -425,6 +427,7 @@ function renderResult() {
     : `The word was <strong>${game.answer}</strong>.`;
   document.getElementById("result-streak").textContent = store.data.streak;
   document.getElementById("result-guesses").textContent = game.won ? game.guesses.length : "—";
+  document.getElementById("result-hints").textContent = game.hintsUsed;
 
   // Mini grid recap.
   const grid = document.getElementById("result-grid");
@@ -482,6 +485,7 @@ function useHint() {
   playAd(5, () => {
     const pos = candidates[0];
     game.hintsUsed += 1;
+    saveProgress();
     showScreen("game");
     toast(`Letter ${pos + 1} is “${game.answer[pos]}”`);
   });
@@ -519,8 +523,68 @@ function renderHomeStats() {
     : "A fresh word is waiting.";
 }
 
+// ---------------------------------------------------------------------------
+// History — a list of completed puzzles, most recent first, built from the same
+// per-puzzle progress store used for resume. Shows result, guesses, and hints.
+// ---------------------------------------------------------------------------
+function renderHistory() {
+  const entries = Object.entries(store.data.progress)
+    .map(([idx, p]) => ({ idx: Number(idx), ...p }))
+    .filter((p) => p.finished)
+    .sort((a, b) => b.idx - a.idx);
+
+  const summary = document.getElementById("history-summary");
+  const solved = entries.filter((p) => p.won).length;
+  const totalHints = entries.reduce((n, p) => n + (p.hintsUsed || 0), 0);
+  summary.textContent = entries.length
+    ? `${solved}/${entries.length} solved · ${totalHints} hint${totalHints === 1 ? "" : "s"} used total`
+    : "";
+
+  const list = document.getElementById("history-list");
+  list.innerHTML = "";
+  if (!entries.length) {
+    list.innerHTML = '<p class="history-empty">No puzzles completed yet. Play one to start your history.</p>';
+    return;
+  }
+
+  for (const p of entries) {
+    const answer = p.answer || "";
+    const row = document.createElement("div");
+    row.className = "history-row";
+
+    // Mini-grid recap of the guesses.
+    const grid = document.createElement("div");
+    grid.className = "history-grid";
+    for (const g of p.guesses) {
+      const scores = answer ? scoreGuess(g, answer) : g.split("").map(() => "absent");
+      const gr = document.createElement("div");
+      gr.className = "mini-row";
+      for (const s of scores) {
+        const cell = document.createElement("div");
+        cell.className = "mini " + s;
+        gr.appendChild(cell);
+      }
+      grid.appendChild(gr);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "history-meta";
+    const hintNote = p.hintsUsed ? ` · 💡 ${p.hintsUsed}` : "";
+    meta.innerHTML =
+      `<div class="history-title">Puzzle #${p.idx}` +
+      (answer ? ` <span class="history-word">${answer}</span>` : "") + `</div>` +
+      `<div class="history-sub">${p.won ? `Solved in ${p.guesses.length}` : "Not solved"}${hintNote}</div>`;
+
+    row.appendChild(meta);
+    row.appendChild(grid);
+    list.appendChild(row);
+  }
+}
+
 function wire() {
   document.getElementById("btn-play").addEventListener("click", () => startRound(0));
+  document.getElementById("btn-history").addEventListener("click", () => { renderHistory(); showScreen("history"); });
+  document.getElementById("btn-history-back").addEventListener("click", () => showScreen("home"));
   document.getElementById("btn-howto").addEventListener("click", () => showScreen("howto"));
   document.getElementById("btn-howto-back").addEventListener("click", () => showScreen("home"));
   document.getElementById("btn-back").addEventListener("click", () => showScreen("home"));

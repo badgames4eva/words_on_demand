@@ -214,6 +214,30 @@ body {
 .swatch.absent { background: var(--absent); }
 .howto-inner .btn { margin-top: 2rem; }
 
+/* ============================ HISTORY ============================ */
+#history { justify-content: flex-start; padding-top: 6vh; }
+.history-inner { width: 100%; max-width: 760px; display: flex; flex-direction: column; align-items: center; }
+.history-inner h2 { font-size: 2.6rem; margin-bottom: .5rem; }
+.history-summary { color: var(--muted); font-size: 1.2rem; margin-bottom: 1.5rem; }
+.history-empty { color: var(--muted); font-size: 1.3rem; text-align: center; padding: 2rem 0; }
+/* Scrollable list so a long history never pushes the Back button off-screen. */
+.history-list {
+  width: 100%; overflow-y: auto; max-height: 58vh;
+  display: flex; flex-direction: column; gap: .8rem; margin-bottom: 1.5rem;
+}
+.history-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; background: var(--panel); border-radius: 12px; padding: 1rem 1.4rem;
+}
+.history-title { font-size: 1.4rem; font-weight: 700; }
+.history-word { color: var(--accent); letter-spacing: .08em; margin-left: .4rem; }
+.history-sub { color: var(--muted); font-size: 1.1rem; margin-top: .2rem; }
+.history-grid { display: inline-grid; gap: .18rem; }
+.history-grid .mini-row { display: grid; grid-template-columns: repeat(5, .9rem); gap: .18rem; }
+.history-grid .mini { width: .9rem; height: .9rem; border-radius: 2px; background: var(--absent); }
+.history-grid .mini.correct { background: var(--correct); }
+.history-grid .mini.present { background: var(--present); }
+
 /* ---------- toast (invalid word etc.) ---------- */
 .toast {
   position: fixed; top: 12vh; left: 50%; transform: translateX(-50%);

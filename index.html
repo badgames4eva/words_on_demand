@@ -30,6 +30,7 @@
 
       <div class="home-actions">
         <button class="btn btn-primary focusable" data-nav-group="home" id="btn-play">Play Today's Puzzle</button>
+        <button class="btn focusable" data-nav-group="home" id="btn-history">History</button>
         <button class="btn focusable" data-nav-group="home" id="btn-howto">How to Play</button>
       </div>
       <p class="daily-note" id="daily-note"></p>
@@ -69,6 +70,7 @@
       <div class="stats-row">
         <div class="stat"><span class="stat-num" id="result-streak">0</span><span class="stat-label">Streak</span></div>
         <div class="stat"><span class="stat-num" id="result-guesses">0</span><span class="stat-label">Guesses</span></div>
+        <div class="stat"><span class="stat-num" id="result-hints">0</span><span class="stat-label">Hints Used</span></div>
       </div>
       <div class="result-grid" id="result-grid"></div>
       <div class="home-actions">
@@ -87,6 +89,16 @@
         <div class="ad-progress"><div class="ad-progress-bar" id="ad-bar"></div></div>
       </div>
       <p class="ad-skip" id="ad-skip">Continues in <span id="ad-count">5</span>…</p>
+    </div>
+  </section>
+
+  <!-- ======================= HISTORY ======================= -->
+  <section id="history" class="screen">
+    <div class="history-inner">
+      <h2>History</h2>
+      <div class="history-summary" id="history-summary"></div>
+      <div class="history-list" id="history-list"></div>
+      <button class="btn btn-primary focusable" data-nav-group="history" id="btn-history-back">Back to Home</button>
     </div>
   </section>
 
