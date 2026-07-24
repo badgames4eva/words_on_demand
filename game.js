@@ -610,6 +610,7 @@ function wire() {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+console.log("Words on Demand — build v2 (ad-guard active)");
 wire();
 renderHomeStats();
 showScreen("home");
