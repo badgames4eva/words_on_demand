@@ -238,6 +238,14 @@ body {
 .history-grid .mini.correct { background: var(--correct); }
 .history-grid .mini.present { background: var(--present); }
 
+/* ---------- build badge (bottom-right version stamp) ---------- */
+#build-badge {
+  position: fixed; bottom: .6rem; right: .8rem;
+  font-size: .85rem; color: var(--muted); opacity: .5;
+  letter-spacing: .04em; pointer-events: none; z-index: 200;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- toast (invalid word etc.) ---------- */
 .toast {
   position: fixed; top: 12vh; left: 50%; transform: translateX(-50%);
