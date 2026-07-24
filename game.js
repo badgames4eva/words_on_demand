@@ -607,17 +607,31 @@ function wire() {
   document.getElementById("btn-hint").onclick = useHint;
   document.getElementById("btn-home").onclick = () => { renderHomeStats(); showScreen("home"); };
 
-  // "One more round" — interstitial ad, then the next puzzle (the retention loop).
+  // "One more round" — interstitial ad, then the next *unplayed* puzzle. We skip
+  // over offsets already completed in an earlier session: without this, each of
+  // those would open on its result screen (which also has a "One More Round"
+  // button), so the player would ad-hop result→result→result until reaching a
+  // fresh puzzle. Jump straight to the next unfinished one and play a single ad.
   document.getElementById("btn-next").onclick = () => {
-    const nextOffset = game.roundOffset + 1;
+    const nextOffset = nextUnplayedOffset(game.roundOffset);
     playAd(5, () => startRound(nextOffset));
   };
+}
+
+// First offset after `fromOffset` whose puzzle hasn't been finished yet.
+// Bounded so a fully-completed streak can't loop forever — falls back to the
+// very next offset (a replay is better than a hang).
+function nextUnplayedOffset(fromOffset) {
+  for (let off = fromOffset + 1; off <= fromOffset + 366; off++) {
+    if (!store.data.progress[puzzleIndex(off)]?.finished) return off;
+  }
+  return fromOffset + 1;
 }
 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
-console.log("Words on Demand — build v4 (idempotent wiring; ad fires once)");
+console.log("Words on Demand — build v5 (One More Round skips finished puzzles)");
 wire();
 renderHomeStats();
 showScreen("home");
