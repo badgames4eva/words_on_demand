@@ -140,16 +140,28 @@ function activateFocused() {
 // ---------------------------------------------------------------------------
 // Global key handling — the remote contract
 // ---------------------------------------------------------------------------
+// Track the last input device. On a real TV there are no letter keys, so you
+// navigate with the D-pad and press OK (Enter) on the on-screen ENTER key. When
+// testing on a desktop keyboard you type letters directly — in that mode Enter
+// should submit the guess, not "click" whatever happens to be focused (which
+// starts on the Back button). This flag keeps the two input styles from fighting.
+let inputMode = "dpad"; // "dpad" | "keyboard"
+
 document.addEventListener("keydown", (e) => {
   // Ad screen swallows input until countdown finishes.
   if (activeScreen === "ad") { e.preventDefault(); return; }
 
   switch (e.key) {
-    case "ArrowUp":    moveFocus("up");    e.preventDefault(); break;
-    case "ArrowDown":  moveFocus("down");  e.preventDefault(); break;
-    case "ArrowLeft":  moveFocus("left");  e.preventDefault(); break;
-    case "ArrowRight": moveFocus("right"); e.preventDefault(); break;
-    case "Enter":      activateFocused();  e.preventDefault(); break;
+    case "ArrowUp":    inputMode = "dpad"; moveFocus("up");    e.preventDefault(); break;
+    case "ArrowDown":  inputMode = "dpad"; moveFocus("down");  e.preventDefault(); break;
+    case "ArrowLeft":  inputMode = "dpad"; moveFocus("left");  e.preventDefault(); break;
+    case "ArrowRight": inputMode = "dpad"; moveFocus("right"); e.preventDefault(); break;
+    case "Enter":
+      // Keyboard-typing mode in the game: Enter submits the guess.
+      if (activeScreen === "game" && inputMode === "keyboard") onKeyPress("ENTER");
+      else activateFocused();
+      e.preventDefault();
+      break;
     case "Backspace":
     case "Escape":
       handleBack();
@@ -158,6 +170,7 @@ document.addEventListener("keydown", (e) => {
     default:
       // Convenience for desktop testing: physical letter keys type into game.
       if (activeScreen === "game" && /^[a-zA-Z]$/.test(e.key)) {
+        inputMode = "keyboard";
         typeLetter(e.key.toUpperCase());
       }
   }
