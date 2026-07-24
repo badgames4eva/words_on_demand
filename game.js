@@ -448,7 +448,15 @@ function renderResult() {
 // ---------------------------------------------------------------------------
 // Interstitial ad — shown between rounds only (respects the doc's UX rule).
 // ---------------------------------------------------------------------------
+let adPlaying = false;
 function playAd(seconds, onDone) {
+  // Never start a second ad while one is showing. Without this guard, a stray
+  // extra activation (double-click, Enter + click, a lingering timer) can stack
+  // two ads — and on a real ad SDK, invoking it re-entrantly is undefined
+  // behavior. This is the production-correct rule: one ad at a time.
+  if (adPlaying) return;
+  adPlaying = true;
+
   showScreen("ad");
   const bar = document.getElementById("ad-bar");
   const count = document.getElementById("ad-count");
@@ -463,6 +471,7 @@ function playAd(seconds, onDone) {
     count.textContent = Math.max(0, Math.ceil(seconds - elapsed));
     if (elapsed >= seconds) {
       clearInterval(tick);
+      adPlaying = false;
       onDone();
     }
   }, 100);
