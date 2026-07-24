@@ -591,26 +591,33 @@ function renderHistory() {
 }
 
 function wire() {
-  document.getElementById("btn-play").addEventListener("click", () => startRound(0));
-  document.getElementById("btn-history").addEventListener("click", () => { renderHistory(); showScreen("history"); });
-  document.getElementById("btn-history-back").addEventListener("click", () => showScreen("home"));
-  document.getElementById("btn-howto").addEventListener("click", () => showScreen("howto"));
-  document.getElementById("btn-howto-back").addEventListener("click", () => showScreen("home"));
-  document.getElementById("btn-back").addEventListener("click", () => showScreen("home"));
-  document.getElementById("btn-hint").addEventListener("click", useHint);
-  document.getElementById("btn-home").addEventListener("click", () => { renderHomeStats(); showScreen("home"); });
+  // Assign with .onclick (not addEventListener). Assignment REPLACES the handler,
+  // so even if wire() somehow runs more than once — a bfcache restore, a soft
+  // reload, or an old+new script briefly coexisting during a cache swap — a button
+  // never ends up with two handlers. Stacked addEventListener handlers were what
+  // made one "One More Round" click fire the ad twice (then thrice): each extra
+  // handler called playAd again after the previous ad finished, so the same-stack
+  // adPlaying guard never saw them.
+  document.getElementById("btn-play").onclick = () => startRound(0);
+  document.getElementById("btn-history").onclick = () => { renderHistory(); showScreen("history"); };
+  document.getElementById("btn-history-back").onclick = () => showScreen("home");
+  document.getElementById("btn-howto").onclick = () => showScreen("howto");
+  document.getElementById("btn-howto-back").onclick = () => showScreen("home");
+  document.getElementById("btn-back").onclick = () => showScreen("home");
+  document.getElementById("btn-hint").onclick = useHint;
+  document.getElementById("btn-home").onclick = () => { renderHomeStats(); showScreen("home"); };
 
   // "One more round" — interstitial ad, then the next puzzle (the retention loop).
-  document.getElementById("btn-next").addEventListener("click", () => {
+  document.getElementById("btn-next").onclick = () => {
     const nextOffset = game.roundOffset + 1;
     playAd(5, () => startRound(nextOffset));
-  });
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
-console.log("Words on Demand — build v3 (ad-guard active)");
+console.log("Words on Demand — build v4 (idempotent wiring; ad fires once)");
 wire();
 renderHomeStats();
 showScreen("home");
