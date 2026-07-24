@@ -21,8 +21,9 @@
 
   --focus-ring: #ffd34d;
 
-  /* 10-foot scale: sizes are deliberately large */
-  --tile: 5.2rem;
+  /* 10-foot scale: sizes are deliberately large, but clamp to viewport height so
+     the board + keyboard + hint always fit (big TVs -> 5.2rem; laptops -> smaller). */
+  --tile: clamp(2.6rem, 7.4vh, 5.2rem);
   --radius: 14px;
 }
 
@@ -111,7 +112,8 @@ body {
    up under the "Puzzle #…" title. */
 #game {
   justify-content: flex-start;
-  padding-top: 10vh;
+  padding-top: clamp(4rem, 7vh, 8vh);
+  gap: clamp(.6rem, 1.5vh, 1.4rem);
 }
 .game-header {
   position: fixed; top: 0; left: 0; right: 0;
@@ -131,8 +133,18 @@ body {
   display: grid;
   grid-template-rows: repeat(6, var(--tile));
   gap: .6rem;
-  margin-bottom: 2.5rem;
 }
+
+/* Color legend — explains tile colors at a glance (visible from the couch). */
+.legend {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 1.5rem;
+}
+.legend-item {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: 1.1rem; color: var(--muted);
+}
+.legend-item .swatch { width: 1.3rem; height: 1.3rem; border-radius: 4px; }
 .board-row { display: grid; grid-template-columns: repeat(5, var(--tile)); gap: .6rem; }
 .tile {
   width: var(--tile); height: var(--tile);
@@ -152,7 +164,7 @@ body {
 .keyboard { display: flex; flex-direction: column; gap: .5rem; align-items: center; }
 .kb-row { display: flex; gap: .5rem; }
 .key {
-  min-width: 3.4rem; height: 4rem;
+  min-width: 3.4rem; height: clamp(2.8rem, 6vh, 4rem);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.4rem; font-weight: 700; text-transform: uppercase;
   background: var(--panel); color: var(--text);
@@ -160,11 +172,13 @@ body {
   cursor: pointer;
 }
 .key.key-wide { min-width: 6rem; font-size: 1.1rem; }
+/* ENTER rendered as a → arrow and accented as the primary action. */
+.key.key-enter { background: var(--accent); font-size: 1.8rem; }
 .key.correct { background: var(--correct); }
 .key.present { background: var(--present); }
 .key.absent  { background: var(--absent); opacity: .55; }
 
-.hint-bar { margin-top: 2rem; }
+.hint-bar { margin: 0; }
 
 /* ============================ RESULT ============================ */
 .result-inner { text-align: center; max-width: 800px; }

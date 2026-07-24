@@ -161,7 +161,8 @@ function handleBack() {
 const KB_LAYOUT = [
   "QWERTYUIOP".split(""),
   "ASDFGHJKL".split(""),
-  ["ENTER", ..."ZXCVBNM".split(""), "DEL"],
+  // DEL and ENTER both on the right (ENTER as a → arrow), like a phone keyboard.
+  ["ZXCVBNM".split(""), "DEL", "ENTER"].flat(),
 ];
 
 function buildBoard() {
@@ -190,10 +191,12 @@ function buildKeyboard() {
     row.className = "kb-row";
     for (const k of rowKeys) {
       const key = document.createElement("button");
-      key.className = "key focusable" + (k.length > 1 ? " key-wide" : "");
+      key.className = "key focusable" + (k.length > 1 ? " key-wide" : "") +
+        (k === "ENTER" ? " key-enter" : "");
       key.dataset.navGroup = "keyboard";
       key.dataset.key = k;
-      key.textContent = k === "DEL" ? "⌫" : k;
+      key.textContent = k === "DEL" ? "⌫" : k === "ENTER" ? "→" : k;
+      if (k === "ENTER") key.setAttribute("aria-label", "Enter");
       key.addEventListener("click", () => onKeyPress(k));
       row.appendChild(key);
     }
