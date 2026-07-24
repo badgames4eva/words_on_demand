@@ -106,6 +106,33 @@ Blocking for store submission.
 4. **Phase 3** — compliance. Blocks submission but is well-defined checklist work.
 5. **Phase 4** — telemetry closes the loop and gates further platform investment.
 
+## State & persistence
+
+The prototype stores everything client-side in the browser's `localStorage` (the
+`wordsondemand.v1` key): stats, streak, and a per-puzzle `progress` record (guesses,
+finished/won, hints used, answer). That progress record does double duty — it powers
+both **resume** (leave mid-puzzle and return to the same board, not a fresh one) and
+the **History** screen — so history and hint counts need no separate data model.
+
+How this carries to the native targets:
+
+- **Fire TV / Android TV (WebView wrap)** — `localStorage` persists as long as the
+  WebView has `domStorageEnabled = true` and a persistent data dir. This exact code
+  keeps working; no change needed.
+- **Vega (Fire TV's newer OS)** — same: a web-runtime app persists `localStorage`. For
+  durable/native-backed storage, use Vega's KV/persistence APIs via the JS↔native bridge.
+
+**Anti-cheat caveat.** Any client-side cache — `localStorage`, Android
+SharedPreferences/DataStore, Vega KV — is user-clearable and editable. The current
+resume fix stops the casual "Back button resets my board" exploit, but a determined
+user can wipe app data to reset. Truly tamper-proof daily state (for leaderboards or
+streaks that carry weight) requires **server-authoritative per-user state** — out of
+scope for launch, but the prerequisite for any competitive/social feature.
+
+**Telemetry hook (Phase 4).** History and hint counts are strong engagement signals —
+wire them to analytics alongside the ad metrics. Hint usage in particular is a direct
+read on both difficulty tuning and rewarded-ad demand.
+
 ## Explicitly out of scope for launch
 
 - Tizen / webOS (Phase 2 of the *strategy*) — reuse this HTML5 later.
