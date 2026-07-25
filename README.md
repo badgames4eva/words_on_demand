@@ -23,6 +23,20 @@ cd /Users/behyad/projects/ai/words_on_demand && python3 -m http.server 8080
 
 Then visit http://localhost:8080
 
+## Tests
+
+Logic tests (scoring, puzzle-of-day math, dictionary integrity, "one more round"
+skip, time formatting) — no framework, no build step. Run either way:
+
+```bash
+node run-tests.js          # headless, exits non-zero on failure (good for CI)
+```
+
+…or open [tests.html](tests.html) in a browser for a green/red readout. Both run
+the same assertions in [tests.js](tests.js) against the real `words.js`/`game.js`.
+Visual and feel (10-foot layout, focus ring, ad screen) stay a manual check in
+the actual page.
+
 ## Controls (remote contract)
 
 | Remote      | Keyboard (desktop) | Action                         |

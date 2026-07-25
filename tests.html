@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Words on Demand — Tests</title>
+  <style>
+    body { font-family: "Segoe UI", system-ui, sans-serif; background: #0f1220;
+      color: #f4f6ff; padding: 2rem; line-height: 1.5; }
+    h1 { font-size: 1.6rem; }
+    #summary { font-size: 1.3rem; font-weight: 700; margin: 1rem 0; padding: .8rem 1.2rem;
+      border-radius: 10px; display: inline-block; }
+    .pass { background: #14512f; }
+    .fail { background: #5a1d24; }
+    ul { list-style: none; padding: 0; }
+    li { padding: .35rem .6rem; border-radius: 6px; font-family: ui-monospace, monospace; }
+    li.ok::before { content: "✓ "; color: #4caf7d; }
+    li.bad { background: #2a1417; }
+    li.bad::before { content: "✗ "; color: #ff6b7a; }
+    .msg { color: #ff9aa5; margin-left: 1.5rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <h1>Words on Demand — logic tests</h1>
+  <div id="summary">running…</div>
+  <ul id="list"></ul>
+
+  <!-- Load the real app code (no ?v= needed; this page isn't cached long). The
+       boot guard in game.js keeps it from wiring up the (absent) game UI. -->
+  <script src="words.js"></script>
+  <script src="game.js"></script>
+  <script>
+    // Expose game.js internals (they're globals in the browser) for tests.js.
+    window.WOD_UNDER_TEST = {
+      scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
+      nextUnplayedOffset, formatDuration,
+      ANSWERS, VALID_GUESSES, store, puzzleIndex,
+    };
+  </script>
+  <script src="tests.js"></script>
+  <script>
+    const results = window.WOD_TEST_RESULTS || [];
+    const failed = results.filter((r) => !r.ok).length;
+    const summary = document.getElementById("summary");
+    summary.className = failed ? "fail" : "pass";
+    summary.textContent = `${results.length - failed}/${results.length} passed` +
+      (failed ? ` — ${failed} FAILED` : " — all green");
+    const list = document.getElementById("list");
+    for (const r of results) {
+      const li = document.createElement("li");
+      li.className = r.ok ? "ok" : "bad";
+      li.textContent = r.name;
+      if (!r.ok) {
+        const m = document.createElement("div");
+        m.className = "msg"; m.textContent = r.msg;
+        li.appendChild(m);
+      }
+      list.appendChild(li);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+/* ============================================================
+   Words on Demand — logic tests (no framework, no build step)
+
+   Runs in two places, same assertions:
+   - Browser: open tests.html (loads words.js, game.js, then this file).
+   - Node:    node run-tests.js  (headless, for a quick pre-push check / CI).
+
+   Scope on purpose: only the pure logic that's easy to get subtly wrong and
+   painful to verify by clicking — scoring, day-of puzzle math, dictionary
+   integrity, "one more round" skip, time formatting. Visual/feel is left to
+   eyeballing in the real page.
+   ============================================================ */
+(function (root) {
+  const results = [];
+  function test(name, fn) {
+    try { fn(); results.push({ name, ok: true }); }
+    catch (e) { results.push({ name, ok: false, msg: e.message }); }
+  }
+  function eq(actual, expected, note) {
+    const a = JSON.stringify(actual), b = JSON.stringify(expected);
+    if (a !== b) throw new Error(`${note || ""} expected ${b}, got ${a}`);
+  }
+  function ok(cond, note) { if (!cond) throw new Error(note || "expected truthy"); }
+
+  // Pull the functions under test from wherever they live (global in browser,
+  // passed in by the Node runner).
+  const G = root.WOD_UNDER_TEST || root;
+  const { scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
+          nextUnplayedOffset, formatDuration } = G;
+  const ANSWERS = G.ANSWERS, VALID_GUESSES = G.VALID_GUESSES, store = G.store,
+        puzzleIndex = G.puzzleIndex;
+
+  // ---- scoreGuess: the classic duplicate-letter minefield ----------------
+  test("scoreGuess: all correct", () => {
+    eq(scoreGuess("PLANE", "PLANE"),
+       ["correct", "correct", "correct", "correct", "correct"]);
+  });
+  test("scoreGuess: all absent", () => {
+    eq(scoreGuess("FUZZY", "PLANE").filter((s) => s !== "absent").length, 0);
+  });
+  test("scoreGuess: simple present (misplaced)", () => {
+    // A is in CIGAR but not at index 0.
+    eq(scoreGuess("APPLE", "CIGAR")[0], "present");
+  });
+  test("scoreGuess: duplicate in guess, single in answer -> only one marked", () => {
+    // Guess LLAMA vs answer HELLO: answer has exactly one L (index 2, wait HELLO
+    // has two L's). Use a cleaner case: guess "EERIE" vs answer "PLANE".
+    // PLANE has one E (last). Guess EERIE has three E's; exactly one should be
+    // credited (as present), the rest absent — never over-count.
+    const s = scoreGuess("EERIE", "PLANE");
+    const credited = s.filter((x) => x === "present" || x === "correct").length;
+    eq(credited, 1, "only one E may be credited");
+  });
+  test("scoreGuess: correct takes priority over present for duplicates", () => {
+    // answer ALLOY (two L's at 1,2). guess LLLLL: positions 1,2 correct, rest absent.
+    const s = scoreGuess("LLLLL", "ALLOY");
+    eq(s, ["absent", "correct", "correct", "absent", "absent"]);
+  });
+  test("scoreGuess: never mutates its inputs", () => {
+    const g = "PLANE", a = "CRANE";
+    scoreGuess(g, a);
+    eq([g, a], ["PLANE", "CRANE"]);
+  });
+
+  // ---- puzzleForDay: deterministic + wraps safely -----------------------
+  test("puzzleForDay: deterministic for a given day", () => {
+    eq(puzzleForDay(42), puzzleForDay(42));
+  });
+  test("puzzleForDay: wraps over the pool length", () => {
+    eq(puzzleForDay(0), puzzleForDay(ANSWERS.length));
+  });
+  test("puzzleForDay: negative indices are handled (no crash, valid word)", () => {
+    const w = puzzleForDay(-1);
+    ok(typeof w === "string" && w.length === 5, "got a 5-letter word for -1");
+    ok(ANSWERS.includes(w), "-1 maps into the answer pool");
+  });
+
+  // ---- dictionary integrity: every answer must be an accepted guess ------
+  test("integrity: every ANSWER is in VALID_GUESSES", () => {
+    const missing = ANSWERS.filter((w) => !VALID_GUESSES.has(w));
+    eq(missing, [], "answers not accepted as guesses");
+  });
+  test("integrity: every ANSWER is exactly 5 letters, A-Z uppercase", () => {
+    const bad = ANSWERS.filter((w) => !/^[A-Z]{5}$/.test(w));
+    eq(bad, [], "malformed answers");
+  });
+  test("integrity: no duplicate answers in the pool", () => {
+    eq(new Set(ANSWERS).size, ANSWERS.length, "duplicate answer words");
+  });
+
+  // ---- nextUnplayedOffset: One More Round skips finished puzzles ---------
+  // Stateful: swap store.data.progress, then restore, so we never touch real stats.
+  test("nextUnplayedOffset: skips consecutively-finished puzzles", () => {
+    const saved = store.data.progress;
+    try {
+      store.data.progress = {};
+      // Mark offsets 0,1,2 finished; 3 is fresh.
+      for (let off = 0; off <= 2; off++) {
+        store.data.progress[puzzleIndex(off)] = { finished: true };
+      }
+      eq(nextUnplayedOffset(0), 3, "should jump past 0,1,2 to 3");
+    } finally { store.data.progress = saved; }
+  });
+  test("nextUnplayedOffset: returns very next offset when nothing finished", () => {
+    const saved = store.data.progress;
+    try {
+      store.data.progress = {};
+      eq(nextUnplayedOffset(5), 6);
+    } finally { store.data.progress = saved; }
+  });
+
+  // ---- formatDuration ----------------------------------------------------
+  test("formatDuration: sub-minute shows seconds", () => { eq(formatDuration(5000), "5s"); });
+  test("formatDuration: rounds to nearest second", () => { eq(formatDuration(5400), "5s"); });
+  test("formatDuration: minutes:seconds with zero-pad", () => { eq(formatDuration(72000), "1:12"); });
+  test("formatDuration: exact minute", () => { eq(formatDuration(60000), "1:00"); });
+
+  root.WOD_TEST_RESULTS = results;
+  return results;
+})(typeof globalThis !== "undefined" ? globalThis : this);

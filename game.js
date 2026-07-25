@@ -677,7 +677,17 @@ function nextUnplayedOffset(fromOffset) {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
-console.log("Words on Demand — build v6 (solve timer, pauses off game screen)");
-wire();
-renderHomeStats();
-showScreen("home");
+// Only auto-boot against the real page. When this file is loaded by the test
+// harness (which has no #btn-play etc.), skip wiring so the logic can be
+// exercised in isolation.
+if (typeof document !== "undefined" && document.getElementById("btn-play")) {
+  console.log("Words on Demand — build v6 (solve timer, pauses off game screen)");
+  wire();
+  renderHomeStats();
+  showScreen("home");
+}
+
+// Expose internals to the test harness (Node) without affecting the browser.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { scoreGuess, nextUnplayedOffset, formatDuration };
+}

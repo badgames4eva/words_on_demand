@@ -42,8 +42,10 @@ future title needs real-time graphics.
 Cheap, high-leverage, must-do-first. All in the existing web code.
 
 - [ ] **git init** + `.gitignore`; commit the prototype as the baseline.
-- [ ] **Codify tests**: unit tests for `scoreGuess` (incl. duplicate letters),
-      `puzzleForDay` (determinism + wrap), dictionary integrity (answers ⊆ valid).
+- [x] **Codify tests**: framework-free suite (`tests.js`) for `scoreGuess` (incl.
+      duplicate letters), `puzzleForDay` (determinism + wrap), dictionary integrity
+      (answers ⊆ valid), `nextUnplayedOffset`, and `formatDuration`. Runs headless
+      (`node run-tests.js`) or in the browser (`tests.html`).
 - [ ] **No-repeat rounds**: "one more round" must not replay the same word in a session.
 - [ ] **Expand answer pool** from 90 → 365+ curated words (a year of dailies), still
       general-audience (COPPA — see STEERING).
