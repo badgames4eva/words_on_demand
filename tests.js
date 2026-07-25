@@ -28,7 +28,7 @@
   const { scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
           nextUnplayedOffset, formatDuration } = G;
   const ANSWERS = G.ANSWERS, VALID_GUESSES = G.VALID_GUESSES, store = G.store,
-        puzzleIndex = G.puzzleIndex;
+        puzzleIndex = G.puzzleIndex, DENYLIST = G.DENYLIST;
 
   // ---- scoreGuess: the classic duplicate-letter minefield ----------------
   test("scoreGuess: all correct", () => {
@@ -86,6 +86,25 @@
   });
   test("integrity: no duplicate answers in the pool", () => {
     eq(new Set(ANSWERS).size, ANSWERS.length, "duplicate answer words");
+  });
+
+  // ---- denylist: offensive terms removed from accepted guesses -----------
+  test("denylist: every denied word is absent from VALID_GUESSES", () => {
+    const leaked = [...DENYLIST].filter((w) => VALID_GUESSES.has(w));
+    eq(leaked, [], "denied words still accepted");
+  });
+  test("denylist: representative slurs/vulgarity are rejected", () => {
+    ["KIKES", "PUSSY", "WHORE", "RAPES"].forEach((w) =>
+      ok(!VALID_GUESSES.has(w), `${w} should be rejected`));
+  });
+  test("denylist: innocent everyday words are still accepted", () => {
+    // Deliberately kept despite a coarse secondary meaning — real vocabulary.
+    ["CRACK", "BALLS", "SPEED", "BLUNT", "ERECT", "STASH"].forEach((w) =>
+      ok(VALID_GUESSES.has(w), `${w} should stay valid`));
+  });
+  test("denylist: does not remove any curated answer", () => {
+    const clobbered = ANSWERS.filter((w) => DENYLIST.has(w));
+    eq(clobbered, [], "a denied word is also a daily answer");
   });
 
   // ---- nextUnplayedOffset: One More Round skips finished puzzles ---------

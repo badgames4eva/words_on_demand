@@ -1297,8 +1297,32 @@ const DICTIONARY = [
   "ZYMIC","ZYMIN",
 ];
 
-// Any curated answer is always a valid guess, even if not in the dictionary list.
-const VALID_GUESSES = new Set([...ANSWERS, ...DICTIONARY]);
+// Denylist: offensive terms the auto-generated system word list happened to
+// include. A general-audience (COPPA-safe) TV game must never surface these on
+// the board — any accepted guess can be typed and shown. We remove only
+// unambiguous slurs, strong vulgarity, and explicit sexual/drug terms. Words
+// with an innocent everyday meaning (CRACK, BALLS, SPEED, BLUNT, ERECT, STASH,
+// BUTTS, KILLS, SLAYS) are intentionally KEPT — rejecting real words frustrates
+// players, and these read as ordinary vocabulary in context.
+const DENYLIST = new Set([
+  // racial / ethnic / identity slurs
+  "KIKES", "CHINK", "GOOKS", "COONS", "DYKES", "SQUAW", "MICKS", "JAPES",
+  // strong sexual / anatomical vulgarity
+  "TWATS", "PUSSY", "PRICK", "COCKS", "DICKS", "BONER", "SLUTS", "WHORE",
+  "HORNY", "SPUNK", "TITTY", "BOOBS", "ARSES", "SEMEN", "PENIS", "VULVA",
+  "LABIA", "CLITS",
+  // explicit drug slang
+  "DOPER", "BONGS",
+  // sexual violence
+  "RAPES", "RAPER",
+]);
+
+// Accepted guesses = curated answers + dictionary, minus the denylist. Answers
+// are always valid (they're curated and safe), so we filter the dictionary and
+// then add answers back on top.
+const VALID_GUESSES = new Set(
+  [...ANSWERS, ...DICTIONARY].filter((w) => !DENYLIST.has(w))
+);
 
 // Deterministic "puzzle of the day": pick an answer by day index so every
 // device shows the same word on the same date (needs no server).

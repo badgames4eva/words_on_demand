@@ -42,7 +42,7 @@ const exposer = `
   globalThis.WOD_UNDER_TEST = {
     scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
     nextUnplayedOffset, formatDuration,
-    ANSWERS, VALID_GUESSES, store, puzzleIndex,
+    ANSWERS, VALID_GUESSES, store, puzzleIndex, DENYLIST,
   };`;
 
 vm.createContext(sandbox);
