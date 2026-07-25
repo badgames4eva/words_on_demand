@@ -14,7 +14,7 @@ shippable product needs. Effort estimates assume a 2–3 person team.
 - Fully playable web prototype: vanilla HTML/CSS/JS, no build step.
 - Correct Wordle scoring (verified against duplicate-letter edge cases).
 - D-pad + OK navigation by on-screen geometry; 10-foot UI; streak/stats in localStorage.
-- 90 curated daily answers; 12,742-word accepted-guess dictionary.
+- 1,162 curated daily answers (~3 years); ~12,700-word accepted-guess dictionary (denylisted).
 - `playAd()` is a **placeholder** — no real ad SDK.
 - Not version-controlled; no tests; no telemetry; no store assets.
 
@@ -47,9 +47,12 @@ Cheap, high-leverage, must-do-first. All in the existing web code.
       (answers ⊆ valid), `nextUnplayedOffset`, and `formatDuration`. Runs headless
       (`node run-tests.js`) or in the browser (`tests.html`).
 - [ ] **No-repeat rounds**: "one more round" must not replay the same word in a session.
-- [ ] **Expand answer pool** from 90 → 365+ curated words (a year of dailies), still
-      general-audience (COPPA — see STEERING).
-- [ ] **Dictionary cleanup**: drop proper-noun / offensive entries from the guess set.
+- [x] **Expand answer pool** from 90 → 1,162 curated words (~3 years of dailies), still
+      general-audience (COPPA — see STEERING). Adult/substance terms (CIGAR, VODKA,
+      RIFLE, VOMIT) excluded from *featured answers* though still accepted as guesses.
+      Integrity tests assert every answer is well-formed, unique, and in VALID_GUESSES.
+- [x] **Dictionary cleanup**: denylist offensive entries from the guess set (proper-noun
+      removal deliberately skipped — the ~25 candidates were mostly legit common words).
 - [ ] **Config seam**: move tunables (ad frequency, word-list URL) to one config object.
 
 ## Phase 1 — Real monetization (1–2 weeks)

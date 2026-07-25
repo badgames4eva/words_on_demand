@@ -681,7 +681,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v6 (solve timer, pauses off game screen)");
+  console.log("Words on Demand — build v7 (answer pool expanded to 1,162 dailies)");
   wire();
   renderHomeStats();
   showScreen("home");
