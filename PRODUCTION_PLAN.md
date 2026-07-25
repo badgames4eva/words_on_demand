@@ -78,6 +78,12 @@ The placeholder `playAd()` is where the business is. This is the core of "produc
 - [ ] `WebView` host loading the bundled HTML5; JS↔native bridge for ads + lifecycle.
 - [ ] **D-pad key mapping**: map hardware remote keycodes → the app's existing arrow/OK
       handling; handle BACK/HOME correctly (Android TV certification checks this).
+      - [x] **Web side of the BACK contract** is implemented: the SPA answers the native
+            `back` message (`back-handled` synchronously within ~400ms), walks screens
+            back, and shows a branded exit-confirmation dialog on home (`exit` on
+            confirm). Sends `ready` on load; honors `pause`/`resume` for the solve
+            timer. See `nativeBridge` in game.js. The native app still needs to post
+            these messages and honor the replies.
 - [ ] Banner/icon assets per platform (Android TV 320×180dp banner; Fire TV art).
 - [ ] Offline handling, pause/resume, focus restoration on app resume.
 - [ ] Test on **real hardware** (a Fire TV Stick + an Android TV device) — low-end perf

@@ -8,15 +8,31 @@ const path = require("path");
 
 const DIR = __dirname;
 
-// Minimal DOM: enough for game.js to load without auto-booting. It intentionally
-// returns null for getElementById so the boot guard (needs #btn-play) stays off.
+// Minimal DOM. getElementById returns null for the boot sentinel (#btn-play) so
+// the auto-boot guard stays off, but serves lightweight stub elements for every
+// OTHER id on demand — enough for showScreen/openModal/closeModal to run headless
+// (needed by the native-bridge tests). querySelectorAll(".focusable") returns [],
+// which the focus helpers handle gracefully.
 const noop = () => {};
+function makeEl(id) {
+  return {
+    id, hidden: false,
+    offsetParent: {}, // truthy => "visible" for focus filters
+    classList: { add: noop, remove: noop, toggle: noop, contains: () => false },
+    querySelectorAll: () => [], querySelector: () => null,
+    appendChild: noop, setAttribute: noop, click: noop, style: {}, dataset: {},
+  };
+}
+const elCache = new Map();
 const documentStub = {
-  getElementById: () => null,
+  getElementById: (id) => {
+    if (id === "btn-play") return null; // keep auto-boot disabled
+    if (!elCache.has(id)) elCache.set(id, makeEl(id));
+    return elCache.get(id);
+  },
   querySelectorAll: () => [],
   querySelector: () => null,
-  createElement: () => ({ classList: { add: noop, remove: noop, toggle: noop },
-    appendChild: noop, setAttribute: noop, style: {}, dataset: {} }),
+  createElement: () => makeEl("_created"),
   addEventListener: noop,
   body: { appendChild: noop },
 };
@@ -46,6 +62,8 @@ const exposer = `
     sessionAnswers, CONFIG,
     game, knownGreens, resetCurrentRow, nextEditableCol,
     typeLetter, removeLetter, currentGuess,
+    nativeBridge, openModal, closeModal, isModalOpen,
+    showScreen, getActiveScreen,
   };`;
 
 vm.createContext(sandbox);

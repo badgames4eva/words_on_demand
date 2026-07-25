@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -119,11 +119,26 @@
     </div>
   </section>
 
+  <!-- ================= EXIT CONFIRMATION (native BACK on home) ================= -->
+  <!-- Shown only when the native wrapper sends a BACK message while on the home
+       screen. Hidden by default; it's a modal overlay, not a .screen. -->
+  <div id="exit-modal" class="modal-overlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="exit-title">
+      <div class="modal-emoji" aria-hidden="true">🙈</div>
+      <h2 id="exit-title" class="modal-title">Wait — end the fun already?</h2>
+      <p class="modal-body">The words will miss you. Are you sure you want to bail?</p>
+      <div class="modal-actions">
+        <button class="btn btn-primary focusable" data-nav-group="exit" id="btn-keep-playing">Keep Playing</button>
+        <button class="btn btn-danger focusable" data-nav-group="exit" id="btn-end-fun">End the Fun</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v10</div>
+  <div id="build-badge">build v11</div>
 
-  <script src="words.js?v=10"></script>
-  <script src="game.js?v=10"></script>
+  <script src="words.js?v=11"></script>
+  <script src="game.js?v=11"></script>
 </body>
 </html>

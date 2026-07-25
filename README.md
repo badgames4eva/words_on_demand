@@ -26,7 +26,8 @@ Then visit http://localhost:8080
 ## Tests
 
 Logic tests (scoring, puzzle-of-day math, dictionary integrity, "one more round"
-skip, time formatting) — no framework, no build step. Run either way:
+skip, carry-down greens, config, the native BACK contract, time formatting) — no
+framework, no build step. Run either way:
 
 ```bash
 node run-tests.js          # headless, exits non-zero on failure (good for CI)
@@ -43,8 +44,21 @@ the actual page.
 |-------------|--------------------|--------------------------------|
 | D-pad       | Arrow keys         | Move focus                     |
 | OK / Select | Enter              | Activate focused element       |
-| Back        | Backspace / Esc    | Delete letter, or go home      |
+| Back        | Backspace / Esc    | Close dialog, delete letter, or go home |
 | —           | A–Z keys           | Type directly (testing only)   |
+
+### Native BACK contract (Fire OS / Vega wrapper)
+
+The wrapper injects `window.WordsOnDemand` and forwards the remote's BACK press,
+waiting ~400ms for a reply before deciding whether to exit. `nativeBridge` in
+[game.js](game.js) implements the SPA side (guarded to a no-op in a plain browser):
+
+- **Inbound** (`window.WordsOnDemand.onMessage` or a `wod:message` event):
+  `back` → close an open dialog, else go back a screen, else (on home) raise the
+  exit-confirmation dialog; `pause`/`resume` → stop/start the solve timer.
+- **Outbound** (`postMessage`, with a `ReactNativeWebView` JSON-string fallback):
+  `ready` on load, `back-handled` **synchronously** for every `back` (so the app
+  never exits under an open dialog), and `exit` only when the user confirms.
 
 ## How the prototype maps to the strategy doc
 

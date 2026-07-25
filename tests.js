@@ -33,6 +33,9 @@
   const game = G.game, knownGreens = G.knownGreens, resetCurrentRow = G.resetCurrentRow,
         nextEditableCol = G.nextEditableCol, typeLetter = G.typeLetter,
         removeLetter = G.removeLetter, currentGuess = G.currentGuess;
+  const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
+        isModalOpen = G.isModalOpen, showScreen = G.showScreen,
+        getActiveScreen = G.getActiveScreen;
 
   // ---- scoreGuess: the classic duplicate-letter minefield ----------------
   test("scoreGuess: all correct", () => {
@@ -213,6 +216,77 @@
       eq(game.locked, [false, false, false, false, false]);
       eq(nextEditableCol(), 0);
     });
+  });
+
+  // ---- native BACK contract ----------------------------------------------
+  // Capture what the bridge posts to native by swapping in a recording API.
+  // Skipped automatically if the headless harness didn't expose the bridge.
+  function withBridge(fn) {
+    if (!nativeBridge) throw new Error("nativeBridge not exposed by harness");
+    const sent = [];
+    const realApi = (typeof window !== "undefined") ? window.WordsOnDemand : undefined;
+    if (typeof window !== "undefined") {
+      window.WordsOnDemand = { postMessage: (m) => sent.push(m), onMessage: null };
+    }
+    // Make sure we start from a clean slate: home screen, no modal.
+    if (isModalOpen()) closeModal();
+    showScreen("home");
+    try { fn(sent); }
+    finally {
+      if (isModalOpen()) closeModal();
+      if (typeof window !== "undefined") window.WordsOnDemand = realApi;
+    }
+  }
+
+  test("back: on home raises the exit dialog and replies back-handled first", () => {
+    withBridge((sent) => {
+      nativeBridge.onNativeMessage({ type: "back" });
+      // Must reply synchronously so native doesn't exit under the dialog...
+      ok(sent.some((m) => m.type === "back-handled"), "sent back-handled");
+      // ...and must NOT have sent exit merely by opening the dialog.
+      ok(!sent.some((m) => m.type === "exit"), "no premature exit");
+      ok(isModalOpen(), "exit dialog is open");
+    });
+  });
+  test("back: closes an open modal instead of navigating", () => {
+    withBridge((sent) => {
+      nativeBridge.onNativeMessage({ type: "back" }); // opens dialog on home
+      sent.length = 0;
+      nativeBridge.onNativeMessage({ type: "back" }); // second back closes it
+      ok(!isModalOpen(), "modal closed");
+      eq(sent.filter((m) => m.type === "back-handled").length, 1, "one reply");
+      ok(!sent.some((m) => m.type === "exit"), "closing modal is not an exit");
+    });
+  });
+  test("back: off home navigates to previous screen (home) and replies", () => {
+    withBridge((sent) => {
+      showScreen("howto");
+      sent.length = 0;
+      nativeBridge.onNativeMessage({ type: "back" });
+      eq(getActiveScreen(), "home", "navigated home");
+      ok(sent.some((m) => m.type === "back-handled"), "sent back-handled");
+      ok(!isModalOpen(), "no dialog off-home");
+    });
+  });
+  test("back: unknown/malformed native messages are ignored", () => {
+    withBridge((sent) => {
+      nativeBridge.onNativeMessage(null);
+      nativeBridge.onNativeMessage({});
+      nativeBridge.onNativeMessage({ type: "nope" });
+      eq(sent.length, 0, "nothing sent for junk messages");
+    });
+  });
+  test("bridge: no-op in a plain browser (no window.WordsOnDemand)", () => {
+    const realApi = (typeof window !== "undefined") ? window.WordsOnDemand : undefined;
+    try {
+      if (typeof window !== "undefined") window.WordsOnDemand = undefined;
+      // Neither of these should throw when the native bridge is absent.
+      nativeBridge.init();
+      nativeBridge.send("ready");
+      ok(true, "init/send are safe no-ops without a native host");
+    } finally {
+      if (typeof window !== "undefined") window.WordsOnDemand = realApi;
+    }
   });
 
   // ---- formatDuration ----------------------------------------------------

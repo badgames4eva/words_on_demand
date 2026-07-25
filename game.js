@@ -107,8 +107,8 @@ function showScreen(id) {
   // for ads, results, history, or stepping away. No timing pressure during play
   // (STEERING), but we can still record how long a solve actually took.
   if (id === "game") resumeTimer(); else pauseTimer();
-  // Focus first focusable in the new screen.
-  focusFirstIn(id);
+  // Focus first focusable in the new screen — unless a modal is capturing focus.
+  if (!modalEl) focusFirstIn(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +147,10 @@ let activeScreen = "home";
 // using on-screen geometry (getBoundingClientRect) so any layout just works.
 // ---------------------------------------------------------------------------
 let focusedEl = null;
+// When a modal (the exit dialog) is open it captures all D-pad focus, so
+// navigation is scoped to it instead of the underlying screen. null = no modal.
+let modalEl = null;
+let modalReturnFocus = null; // element to re-focus when the modal closes
 
 function setFocus(el) {
   if (!el) return;
@@ -155,21 +159,26 @@ function setFocus(el) {
   focusedEl.classList.add("is-focused");
 }
 
-function focusablesIn(screenId) {
-  return Array.from(
-    document.getElementById(screenId).querySelectorAll(".focusable")
-  ).filter((el) => el.offsetParent !== null); // visible only
+function focusablesInEl(el) {
+  if (!el) return [];
+  return Array.from(el.querySelectorAll(".focusable"))
+    .filter((e) => e.offsetParent !== null); // visible only
 }
+function focusablesIn(screenId) { return focusablesInEl(document.getElementById(screenId)); }
 
-function focusFirstIn(screenId) {
-  const items = focusablesIn(screenId);
+// The element focus is currently scoped to: the open modal, else the screen.
+function focusRoot() { return modalEl || document.getElementById(activeScreen); }
+
+function focusFirstInEl(el) {
+  const items = focusablesInEl(el);
   if (items.length) setFocus(items[0]);
   else focusedEl = null;
 }
+function focusFirstIn(screenId) { focusFirstInEl(document.getElementById(screenId)); }
 
 function moveFocus(dir) {
-  const items = focusablesIn(activeScreen);
-  if (!focusedEl || items.length === 0) { focusFirstIn(activeScreen); return; }
+  const items = focusablesInEl(focusRoot());
+  if (!focusedEl || items.length === 0) { focusFirstInEl(focusRoot()); return; }
 
   const cur = focusedEl.getBoundingClientRect();
   const curX = cur.left + cur.width / 2;
@@ -206,6 +215,32 @@ function moveFocus(dir) {
 function activateFocused() {
   if (focusedEl) focusedEl.click();
 }
+
+// ---------------------------------------------------------------------------
+// Modal overlay (the exit-confirmation dialog). Captures D-pad focus while open.
+// ---------------------------------------------------------------------------
+function openModal(id, defaultFocusId) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  modalReturnFocus = focusedEl; // restore focus here on close
+  modalEl = el;
+  el.hidden = false;
+  const def = defaultFocusId && document.getElementById(defaultFocusId);
+  if (def) setFocus(def); else focusFirstInEl(el);
+}
+
+function closeModal() {
+  if (!modalEl) return;
+  modalEl.hidden = true;
+  modalEl = null;
+  // Return focus to wherever it was, if that element is still visible.
+  if (modalReturnFocus && modalReturnFocus.offsetParent !== null) setFocus(modalReturnFocus);
+  else focusFirstInEl(focusRoot());
+  modalReturnFocus = null;
+}
+
+function isModalOpen() { return modalEl !== null; }
+function getActiveScreen() { return activeScreen; }
 
 // ---------------------------------------------------------------------------
 // Global key handling — the remote contract
@@ -247,6 +282,9 @@ document.addEventListener("keydown", (e) => {
 });
 
 function handleBack() {
+  // A local Escape/Backspace on desktop mirrors the native BACK on a modal:
+  // close it first rather than navigating underneath it.
+  if (isModalOpen()) { closeModal(); return; }
   if (activeScreen === "game") {
     // Backspace deletes a typed letter; if there's nothing editable to remove,
     // go home. Locked greens don't count — Back from a greens-only row exits.
@@ -741,7 +779,80 @@ function wire() {
     const nextOffset = nextUnplayedOffset(game.roundOffset);
     playAd(CONFIG.adSeconds.interstitial, () => startRound(nextOffset));
   };
+
+  // Exit-confirmation dialog (raised by native BACK on the home screen).
+  document.getElementById("btn-keep-playing").onclick = () => closeModal();
+  document.getElementById("btn-end-fun").onclick = () => {
+    closeModal();
+    nativeBridge.send("exit"); // the user's answer, delivered after back-handled
+  };
 }
+
+// ---------------------------------------------------------------------------
+// Native TV wrapper bridge (Fire OS + Vega). No-op in a plain browser where the
+// injected `window.WordsOnDemand` object is absent, so the SPA still runs there.
+//
+// BACK contract: the native app posts a `back` message and waits ~400ms for a
+// reply before deciding whether to exit. We MUST answer `back-handled`
+// SYNCHRONOUSLY in every case (even when a dialog is left on screen) so the app
+// never exits out from under an open dialog. The dialog's outcome is reported
+// separately: "End the Fun" sends `exit`, "Keep Playing" sends nothing.
+// ---------------------------------------------------------------------------
+const nativeBridge = {
+  get api() {
+    return (typeof window !== "undefined" && window.WordsOnDemand) || null;
+  },
+  // Send a typed message to the native host. Prefers the WordsOnDemand channel;
+  // falls back to the ReactNativeWebView string channel if that's what's present.
+  send(type) {
+    const msg = { type };
+    try {
+      const api = this.api;
+      if (api && typeof api.postMessage === "function") { api.postMessage(msg); return; }
+      if (typeof window !== "undefined" && window.ReactNativeWebView &&
+          typeof window.ReactNativeWebView.postMessage === "function") {
+        window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+      }
+    } catch (e) { /* bridge unavailable — behave as a normal web page */ }
+  },
+
+  // Handle an incoming BACK press. Returns nothing; replies synchronously.
+  handleBack() {
+    // 1) A modal is open → close it and we're done.
+    if (isModalOpen()) {
+      closeModal();
+      this.send("back-handled");
+      return;
+    }
+    // 2) Not on home → go back a screen (flat nav: everything returns to home).
+    if (activeScreen !== "home") {
+      showScreen("home");
+      this.send("back-handled");
+      return;
+    }
+    // 3) On home → confirm exit. Reply IMMEDIATELY (don't await the user), then
+    //    raise the dialog. "End the Fun" will send `exit` later.
+    this.send("back-handled");
+    openModal("exit-modal", "btn-keep-playing");
+  },
+
+  onNativeMessage(msg) {
+    if (!msg || typeof msg.type !== "string") return;
+    switch (msg.type) {
+      case "back":   this.handleBack(); break;
+      case "pause":  pauseTimer(); break;   // freeze the solve clock while backgrounded
+      case "resume": if (activeScreen === "game") resumeTimer(); break;
+    }
+  },
+
+  // Register the two documented inbound channels and announce readiness.
+  init() {
+    if (!this.api) return; // plain browser: nothing to wire, stays a no-op
+    this.api.onMessage = (msg) => this.onNativeMessage(msg);
+    window.addEventListener("wod:message", (e) => this.onNativeMessage(e && e.detail));
+    this.send("ready");
+  },
+};
 
 // First offset after `fromOffset` that's a fresh puzzle: neither finished in a
 // past session nor already played this session (no repeated solution word). We
@@ -765,10 +876,11 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v10 (carry down known-correct letters)");
+  console.log("Words on Demand — build v11 (native BACK contract + exit dialog)");
   wire();
   renderHomeStats();
   showScreen("home");
+  nativeBridge.init(); // announces `ready`; no-op in a plain browser
 }
 
 // Expose internals to the test harness (Node) without affecting the browser.
@@ -776,5 +888,7 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = { scoreGuess, nextUnplayedOffset, formatDuration, CONFIG,
     getSessionAnswers: () => sessionAnswers,
     game, knownGreens, resetCurrentRow, nextEditableCol,
-    typeLetter, removeLetter, currentGuess };
+    typeLetter, removeLetter, currentGuess,
+    nativeBridge, openModal, closeModal, isModalOpen,
+    showScreen, getActiveScreen };
 }
