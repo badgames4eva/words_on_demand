@@ -5,9 +5,30 @@
    - Interstitial ad only at natural break points (never mid-solve)
    ============================================================ */
 
-const WORD_LEN = 5;
-const MAX_GUESSES = 6;
-const STORAGE_KEY = "wordsondemand.v1";
+// ---------------------------------------------------------------------------
+// CONFIG — the one place for tunables. Kept as a plain object so it can later
+// be overridden by remote config (Phase 4) or a per-platform build without
+// hunting for magic numbers. Anything a product/monetization decision might
+// change lives here; game logic reads from it.
+// ---------------------------------------------------------------------------
+const CONFIG = {
+  wordLength: 5,          // letters per guess
+  maxGuesses: 6,          // rows on the board
+  storageKey: "wordsondemand.v1",
+  revealDelayMs: 700,     // pause after the final guess before showing the result
+  adSeconds: {
+    interstitial: 5,      // "one more round" break ad
+    rewarded: 5,          // hint (rewarded video) — reward granted on completion
+  },
+  // Placeholder seam for Phase 4 remote word lists (ship new dailies without an
+  // app update). null = use the built-in ANSWERS pool.
+  wordListUrl: null,
+};
+
+// Convenience aliases so the hot paths stay readable.
+const WORD_LEN = CONFIG.wordLength;
+const MAX_GUESSES = CONFIG.maxGuesses;
+const STORAGE_KEY = CONFIG.storageKey;
 
 // ---------------------------------------------------------------------------
 // Persisted stats (streaks, played, wins) — local only, no backend needed.
@@ -331,11 +352,11 @@ function submitGuess() {
   if (guessed === game.answer) {
     game.finished = true; game.won = true;
     pauseTimer(); // freeze solve time at the winning guess, before the reveal delay
-    setTimeout(endRound, 700);
+    setTimeout(endRound, CONFIG.revealDelayMs);
   } else if (game.guesses.length >= MAX_GUESSES) {
     game.finished = true; game.won = false;
     pauseTimer();
-    setTimeout(endRound, 700);
+    setTimeout(endRound, CONFIG.revealDelayMs);
   }
   saveProgress();
 }
@@ -540,7 +561,7 @@ function useHint() {
   for (let i = 0; i < WORD_LEN; i++) if (!revealed.has(i)) candidates.push(i);
   if (candidates.length === 0) { toast("All letters already revealed!"); return; }
 
-  playAd(5, () => {
+  playAd(CONFIG.adSeconds.rewarded, () => {
     const pos = candidates[0];
     game.hintsUsed += 1;
     saveProgress();
@@ -666,7 +687,7 @@ function wire() {
   // fresh puzzle. Jump straight to the next unfinished one and play a single ad.
   document.getElementById("btn-next").onclick = () => {
     const nextOffset = nextUnplayedOffset(game.roundOffset);
-    playAd(5, () => startRound(nextOffset));
+    playAd(CONFIG.adSeconds.interstitial, () => startRound(nextOffset));
   };
 }
 
@@ -692,7 +713,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v8 (no-repeat rounds within a session)");
+  console.log("Words on Demand — build v9 (config seam for tunables)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -700,6 +721,6 @@ if (typeof document !== "undefined" && document.getElementById("btn-play")) {
 
 // Expose internals to the test harness (Node) without affecting the browser.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { scoreGuess, nextUnplayedOffset, formatDuration,
+  module.exports = { scoreGuess, nextUnplayedOffset, formatDuration, CONFIG,
     getSessionAnswers: () => sessionAnswers };
 }

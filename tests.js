@@ -29,7 +29,7 @@
           nextUnplayedOffset, formatDuration } = G;
   const ANSWERS = G.ANSWERS, VALID_GUESSES = G.VALID_GUESSES, store = G.store,
         puzzleIndex = G.puzzleIndex, DENYLIST = G.DENYLIST,
-        sessionAnswers = G.sessionAnswers;
+        sessionAnswers = G.sessionAnswers, CONFIG = G.CONFIG;
 
   // ---- scoreGuess: the classic duplicate-letter minefield ----------------
   test("scoreGuess: all correct", () => {
@@ -148,6 +148,19 @@
       store.data.progress = saved;
       sessionAnswers.clear(); savedSession.forEach((w) => sessionAnswers.add(w));
     }
+  });
+
+  // ---- CONFIG seam: tunables consolidated & sane -------------------------
+  test("config: board matches a 5-letter, 6-guess Wordle", () => {
+    eq(CONFIG.wordLength, 5);
+    eq(CONFIG.maxGuesses, 6);
+    // Every curated answer must fit the configured word length.
+    eq(ANSWERS.filter((w) => w.length !== CONFIG.wordLength), [], "answer wrong length");
+  });
+  test("config: ad durations are positive numbers", () => {
+    ok(CONFIG.adSeconds.interstitial > 0, "interstitial seconds");
+    ok(CONFIG.adSeconds.rewarded > 0, "rewarded seconds");
+    ok(CONFIG.revealDelayMs >= 0, "reveal delay");
   });
 
   // ---- formatDuration ----------------------------------------------------

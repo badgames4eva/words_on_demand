@@ -43,7 +43,7 @@ const exposer = `
     scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
     nextUnplayedOffset, formatDuration,
     ANSWERS, VALID_GUESSES, store, puzzleIndex, DENYLIST,
-    sessionAnswers,
+    sessionAnswers, CONFIG,
   };`;
 
 vm.createContext(sandbox);

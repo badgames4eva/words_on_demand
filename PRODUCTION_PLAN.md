@@ -55,7 +55,9 @@ Cheap, high-leverage, must-do-first. All in the existing web code.
       Integrity tests assert every answer is well-formed, unique, and in VALID_GUESSES.
 - [x] **Dictionary cleanup**: denylist offensive entries from the guess set (proper-noun
       removal deliberately skipped — the ~25 candidates were mostly legit common words).
-- [ ] **Config seam**: move tunables (ad frequency, word-list URL) to one config object.
+- [x] **Config seam**: `CONFIG` object in game.js holds all tunables (word length,
+      guesses, ad durations for interstitial/rewarded, reveal delay, and a
+      `wordListUrl` placeholder for Phase 4 remote config). Logic reads from it.
 
 ## Phase 1 — Real monetization (1–2 weeks)
 
