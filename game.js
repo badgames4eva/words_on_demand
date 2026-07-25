@@ -35,11 +35,13 @@ function puzzleIndex(offset) { return dayIndexToday() + offset; }
 // Persist the current board so leaving and returning resumes it (no restart /
 // "reroll" of the same word — that would be cheating).
 function saveProgress() {
+  commitTimer(); // fold in any elapsed time so the saved total is current
   store.data.progress[puzzleIndex(game.roundOffset)] = {
     guesses: game.guesses.slice(),
     finished: game.finished,
     won: game.won,
     hintsUsed: game.hintsUsed,
+    solveMs: game.solveMs, // active solve time (timer pauses off the game screen)
     answer: game.answer, // stored so history can render without re-deriving
   };
   store.save();
@@ -55,6 +57,8 @@ const game = {
   finished: false,
   won: false,
   hintsUsed: 0,
+  solveMs: 0,        // active solve time; the timer pauses off the game screen
+  timerStart: null,  // Date.now() when the timer last resumed; null while paused
   roundOffset: 0,    // 0 = today's puzzle; grows with "one more round"
 };
 
@@ -68,8 +72,41 @@ function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("is-active"));
   document.getElementById(id).classList.add("is-active");
   activeScreen = id;
+  // The solve timer only advances while the game board is on screen — it pauses
+  // for ads, results, history, or stepping away. No timing pressure during play
+  // (STEERING), but we can still record how long a solve actually took.
+  if (id === "game") resumeTimer(); else pauseTimer();
   // Focus first focusable in the new screen.
   focusFirstIn(id);
+}
+
+// ---------------------------------------------------------------------------
+// Solve timer — accumulates active game-screen time into game.solveMs. Paused
+// whenever the board isn't the active screen so ads and idle time never count.
+// ---------------------------------------------------------------------------
+function resumeTimer() {
+  if (game.finished) return;          // a completed puzzle's time is frozen
+  if (game.timerStart === null) game.timerStart = Date.now();
+}
+function pauseTimer() {
+  if (game.timerStart !== null) {
+    game.solveMs += Date.now() - game.timerStart;
+    game.timerStart = null;
+  }
+}
+// Fold any in-flight elapsed time into solveMs without stopping the clock.
+function commitTimer() {
+  if (game.timerStart !== null) {
+    const now = Date.now();
+    game.solveMs += now - game.timerStart;
+    game.timerStart = now;
+  }
+}
+function formatDuration(ms) {
+  const total = Math.round(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}s`;
 }
 let activeScreen = "home";
 
@@ -288,9 +325,11 @@ function submitGuess() {
 
   if (guessed === game.answer) {
     game.finished = true; game.won = true;
+    pauseTimer(); // freeze solve time at the winning guess, before the reveal delay
     setTimeout(endRound, 700);
   } else if (game.guesses.length >= MAX_GUESSES) {
     game.finished = true; game.won = false;
+    pauseTimer();
     setTimeout(endRound, 700);
   }
   saveProgress();
@@ -371,6 +410,8 @@ function startRound(offset) {
   game.finished = saved ? saved.finished : false;
   game.won = saved ? saved.won : false;
   game.hintsUsed = saved ? (saved.hintsUsed || 0) : 0;
+  game.solveMs = saved ? (saved.solveMs || 0) : 0;
+  game.timerStart = null; // showScreen("game") will resume it if unfinished
   replayGuesses();
 
   document.getElementById("puzzle-no").textContent = puzzleIndex(offset);
@@ -428,6 +469,8 @@ function renderResult() {
   document.getElementById("result-streak").textContent = store.data.streak;
   document.getElementById("result-guesses").textContent = game.won ? game.guesses.length : "—";
   document.getElementById("result-hints").textContent = game.hintsUsed;
+  document.getElementById("result-time").textContent =
+    game.won && game.solveMs > 0 ? formatDuration(game.solveMs) : "—";
 
   // Mini grid recap.
   const grid = document.getElementById("result-grid");
@@ -545,8 +588,10 @@ function renderHistory() {
   const summary = document.getElementById("history-summary");
   const solved = entries.filter((p) => p.won).length;
   const totalHints = entries.reduce((n, p) => n + (p.hintsUsed || 0), 0);
+  const times = entries.filter((p) => p.won && p.solveMs > 0).map((p) => p.solveMs);
+  const bestNote = times.length ? ` · best ⏱ ${formatDuration(Math.min(...times))}` : "";
   summary.textContent = entries.length
-    ? `${solved}/${entries.length} solved · ${totalHints} hint${totalHints === 1 ? "" : "s"} used total`
+    ? `${solved}/${entries.length} solved · ${totalHints} hint${totalHints === 1 ? "" : "s"} used total${bestNote}`
     : "";
 
   const list = document.getElementById("history-list");
@@ -579,10 +624,11 @@ function renderHistory() {
     const meta = document.createElement("div");
     meta.className = "history-meta";
     const hintNote = p.hintsUsed ? ` · 💡 ${p.hintsUsed}` : "";
+    const timeNote = p.won && p.solveMs > 0 ? ` · ⏱ ${formatDuration(p.solveMs)}` : "";
     meta.innerHTML =
       `<div class="history-title">Puzzle #${p.idx}` +
       (answer ? ` <span class="history-word">${answer}</span>` : "") + `</div>` +
-      `<div class="history-sub">${p.won ? `Solved in ${p.guesses.length}` : "Not solved"}${hintNote}</div>`;
+      `<div class="history-sub">${p.won ? `Solved in ${p.guesses.length}` : "Not solved"}${timeNote}${hintNote}</div>`;
 
     row.appendChild(meta);
     row.appendChild(grid);
@@ -631,7 +677,7 @@ function nextUnplayedOffset(fromOffset) {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
-console.log("Words on Demand — build v5 (One More Round skips finished puzzles)");
+console.log("Words on Demand — build v6 (solve timer, pauses off game screen)");
 wire();
 renderHomeStats();
 showScreen("home");
