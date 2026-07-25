@@ -915,7 +915,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v15 (tagline: 'Fresh daily puzzle. Endless play.')");
+  console.log("Words on Demand — build v16 (scramble daily order so consecutive plays aren't alphabetical)");
   wire();
   renderHomeStats();
   showScreen("home");

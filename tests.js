@@ -87,6 +87,28 @@
     ok(typeof w === "string" && w.length === 5, "got a 5-letter word for -1");
     ok(ANSWERS.includes(w), "-1 maps into the answer pool");
   });
+  // The scramble must be a perfect bijection: one full cycle of consecutive days
+  // visits every answer exactly once (this is the "~3 years, no repeats"
+  // guarantee). If the pool size stops being coprime to SCRAMBLE_A, this fails.
+  test("puzzleForDay: one full cycle hits every answer exactly once (bijection)", () => {
+    const seen = new Set();
+    for (let d = 0; d < ANSWERS.length; d++) seen.add(puzzleForDay(d));
+    eq(seen.size, ANSWERS.length, "every answer appears once per cycle");
+  });
+  // The bug this fixes: consecutive days were alphabetical neighbors (STOMP,
+  // STOOL, STOOP, STORE). Assert back-to-back days land far apart in the
+  // alphabetically-sorted pool, so a run of plays never marches through the ABCs.
+  test("puzzleForDay: consecutive days are NOT adjacent in the sorted pool", () => {
+    const pos = (w) => ANSWERS.indexOf(w);
+    let minGap = Infinity;
+    for (let d = 0; d < 200; d++) {
+      const gap = Math.abs(pos(puzzleForDay(d + 1)) - pos(puzzleForDay(d)));
+      if (gap < minGap) minGap = gap;
+    }
+    // Direct indexing would make this gap exactly 1 every day. Demand real spread.
+    ok(minGap > ANSWERS.length / 20,
+       `neighboring days too close in the alphabet (min gap ${minGap})`);
+  });
 
   // ---- dictionary integrity: every answer must be an accepted guess ------
   test("integrity: every ANSWER is in VALID_GUESSES", () => {

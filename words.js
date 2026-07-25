@@ -1432,11 +1432,30 @@ const VALID_GUESSES = new Set(
   [...ANSWERS, ...DICTIONARY].filter((w) => !DENYLIST.has(w))
 );
 
+// The answer pool is stored alphabetically (easy to curate/audit). If we indexed
+// it directly by day, consecutive days would walk the list in order — so you'd
+// get STOMP, STOOL, STOOP, STORE on back-to-back plays, which feels anything but
+// random. So we first run the sequential day index through a fixed bijective
+// "scramble" and index the pool with THAT.
+//
+// scramble(n) = (A·n + B) mod len, with A coprime to len, is an affine
+// permutation of [0, len): a perfect bijection, so every answer still appears
+// exactly once per full cycle (keeps the "~3 years, no repeats" guarantee) and
+// it's fully deterministic (same date => same word on every device, no server) —
+// but neighboring days land far apart in the alphabet. A ≈ len·0.618 (golden
+// ratio) scatters best; 719 is prime and coprime to 1162 (= 2·7·83). If the pool
+// size ever changes to break coprimality, the bijection test in tests.js fails
+// loudly. (The scatter test guards against A degenerating into small strides.)
+const SCRAMBLE_A = 719;
+const SCRAMBLE_B = 89;
+function scrambleIndex(n, len) {
+  return ((((SCRAMBLE_A * n + SCRAMBLE_B) % len) + len) % len);
+}
+
 // Deterministic "puzzle of the day": pick an answer by day index so every
 // device shows the same word on the same date (needs no server).
 function puzzleForDay(dayIndex) {
-  const i = ((dayIndex % ANSWERS.length) + ANSWERS.length) % ANSWERS.length;
-  return ANSWERS[i];
+  return ANSWERS[scrambleIndex(dayIndex, ANSWERS.length)];
 }
 
 // Extra puzzle for the "one more round" loop — offset from today.
