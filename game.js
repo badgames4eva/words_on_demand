@@ -65,6 +65,11 @@ const game = {
 // keyStates: letter -> "correct" | "present" | "absent"
 let keyStates = {};
 
+// Answer words seen this session (resets on reload). "One more round" won't hand
+// back a word already played, so a long sitting never repeats a solution — even
+// though the pool wraps and two far-apart offsets can map to the same word.
+let sessionAnswers = new Set();
+
 // ---------------------------------------------------------------------------
 // Screen management
 // ---------------------------------------------------------------------------
@@ -399,6 +404,7 @@ function startRound(offset) {
   game.answer = extraPuzzle(offset);
   game.current = "";
   keyStates = {};
+  sessionAnswers.add(game.answer);
 
   buildBoard();
   buildKeyboard();
@@ -664,12 +670,17 @@ function wire() {
   };
 }
 
-// First offset after `fromOffset` whose puzzle hasn't been finished yet.
-// Bounded so a fully-completed streak can't loop forever — falls back to the
-// very next offset (a replay is better than a hang).
+// First offset after `fromOffset` that's a fresh puzzle: neither finished in a
+// past session nor already played this session (no repeated solution word). We
+// scan a full pool's worth of offsets so every distinct word is considered
+// before giving up. Falls back to the very next offset if the whole pool is
+// exhausted (a replay beats a hang).
 function nextUnplayedOffset(fromOffset) {
-  for (let off = fromOffset + 1; off <= fromOffset + 366; off++) {
-    if (!store.data.progress[puzzleIndex(off)]?.finished) return off;
+  const span = ANSWERS.length;
+  for (let off = fromOffset + 1; off <= fromOffset + span; off++) {
+    if (store.data.progress[puzzleIndex(off)]?.finished) continue;
+    if (sessionAnswers.has(extraPuzzle(off))) continue;
+    return off;
   }
   return fromOffset + 1;
 }
@@ -681,7 +692,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v7 (answer pool expanded to 1,162 dailies)");
+  console.log("Words on Demand — build v8 (no-repeat rounds within a session)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -689,5 +700,6 @@ if (typeof document !== "undefined" && document.getElementById("btn-play")) {
 
 // Expose internals to the test harness (Node) without affecting the browser.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { scoreGuess, nextUnplayedOffset, formatDuration };
+  module.exports = { scoreGuess, nextUnplayedOffset, formatDuration,
+    getSessionAnswers: () => sessionAnswers };
 }

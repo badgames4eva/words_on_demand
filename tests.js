@@ -28,7 +28,8 @@
   const { scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
           nextUnplayedOffset, formatDuration } = G;
   const ANSWERS = G.ANSWERS, VALID_GUESSES = G.VALID_GUESSES, store = G.store,
-        puzzleIndex = G.puzzleIndex, DENYLIST = G.DENYLIST;
+        puzzleIndex = G.puzzleIndex, DENYLIST = G.DENYLIST,
+        sessionAnswers = G.sessionAnswers;
 
   // ---- scoreGuess: the classic duplicate-letter minefield ----------------
   test("scoreGuess: all correct", () => {
@@ -122,10 +123,31 @@
   });
   test("nextUnplayedOffset: returns very next offset when nothing finished", () => {
     const saved = store.data.progress;
+    const savedSession = new Set(sessionAnswers);
     try {
       store.data.progress = {};
+      sessionAnswers.clear();
       eq(nextUnplayedOffset(5), 6);
-    } finally { store.data.progress = saved; }
+    } finally {
+      store.data.progress = saved;
+      sessionAnswers.clear(); savedSession.forEach((w) => sessionAnswers.add(w));
+    }
+  });
+  test("nextUnplayedOffset: skips a word already played this session (no repeat)", () => {
+    const saved = store.data.progress;
+    const savedSession = new Set(sessionAnswers);
+    try {
+      store.data.progress = {};
+      sessionAnswers.clear();
+      // Pretend the very next offset's word was already solved this session.
+      sessionAnswers.add(extraPuzzle(6));
+      const off = nextUnplayedOffset(5);
+      ok(off !== 6, "should not hand back offset 6 (its word is played)");
+      ok(!sessionAnswers.has(extraPuzzle(off)), "chosen word is unplayed this session");
+    } finally {
+      store.data.progress = saved;
+      sessionAnswers.clear(); savedSession.forEach((w) => sessionAnswers.add(w));
+    }
   });
 
   // ---- formatDuration ----------------------------------------------------

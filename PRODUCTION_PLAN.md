@@ -46,7 +46,9 @@ Cheap, high-leverage, must-do-first. All in the existing web code.
       duplicate letters), `puzzleForDay` (determinism + wrap), dictionary integrity
       (answers ⊆ valid), `nextUnplayedOffset`, and `formatDuration`. Runs headless
       (`node run-tests.js`) or in the browser (`tests.html`).
-- [ ] **No-repeat rounds**: "one more round" must not replay the same word in a session.
+- [x] **No-repeat rounds**: "one more round" won't replay a solution word within a
+      session. `nextUnplayedOffset` skips both finished puzzles and any offset whose
+      answer is already in the session's `sessionAnswers` set (resets on reload).
 - [x] **Expand answer pool** from 90 → 1,162 curated words (~3 years of dailies), still
       general-audience (COPPA — see STEERING). Adult/substance terms (CIGAR, VODKA,
       RIFLE, VOMIT) excluded from *featured answers* though still accepted as guesses.
