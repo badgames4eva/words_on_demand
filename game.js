@@ -74,7 +74,12 @@ function saveProgress() {
 const game = {
   answer: "",
   guesses: [],       // array of completed guess strings
-  current: "",       // in-progress guess
+  // In-progress row is positional (not a plain string) so we can carry down
+  // known-correct letters. cells[i] is the letter in column i (or ""); locked[i]
+  // marks a carried-down green that the player can't edit or delete — saves
+  // re-typing letters they've already pinned, which matters most on a remote.
+  cells: [],
+  locked: [],
   finished: false,
   won: false,
   hintsUsed: 0,
@@ -243,8 +248,11 @@ document.addEventListener("keydown", (e) => {
 
 function handleBack() {
   if (activeScreen === "game") {
-    // Backspace deletes a letter; if empty, go home.
-    if (game.current.length > 0 && !game.finished) removeLetter();
+    // Backspace deletes a typed letter; if there's nothing editable to remove,
+    // go home. Locked greens don't count — Back from a greens-only row exits.
+    const hasEditable = !game.finished &&
+      game.cells.some((ch, i) => ch !== "" && !game.locked[i]);
+    if (hasEditable) removeLetter();
     else showScreen("home");
   } else if (activeScreen === "howto" || activeScreen === "result") {
     showScreen("home");
@@ -308,17 +316,55 @@ function onKeyPress(k) {
 }
 
 // ---------------------------------------------------------------------------
-// Typing
+// Typing (positional: cells[] + locked[])
 // ---------------------------------------------------------------------------
+
+// Columns known to be correct from prior guesses in this round. Carried down so
+// the player never re-types a pinned letter. Returns a per-column letter or "".
+function knownGreens() {
+  const greens = new Array(WORD_LEN).fill("");
+  for (const guess of game.guesses) {
+    for (let i = 0; i < WORD_LEN; i++) {
+      if (guess[i] === game.answer[i]) greens[i] = game.answer[i];
+    }
+  }
+  return greens;
+}
+
+// Seed a fresh input row: pre-fill and lock every known-green column.
+function resetCurrentRow() {
+  const greens = knownGreens();
+  game.cells = greens.slice();
+  game.locked = greens.map((g) => g !== "");
+}
+
+// The joined guess string (only complete once every column is filled).
+function currentGuess() { return game.cells.join(""); }
+function currentFilledCount() { return game.cells.filter((c) => c !== "").length; }
+
+// First editable empty column — where the next typed letter lands and where the
+// cursor shows. Returns -1 when the row is full.
+function nextEditableCol() {
+  for (let i = 0; i < WORD_LEN; i++) {
+    if (!game.locked[i] && game.cells[i] === "") return i;
+  }
+  return -1;
+}
+
 function typeLetter(letter) {
-  if (game.finished || game.current.length >= WORD_LEN) return;
-  game.current += letter;
+  if (game.finished) return;
+  const c = nextEditableCol();
+  if (c === -1) return; // row full
+  game.cells[c] = letter;
   renderCurrentRow();
 }
 
 function removeLetter() {
-  if (game.finished || game.current.length === 0) return;
-  game.current = game.current.slice(0, -1);
+  if (game.finished) return;
+  // Delete the last editable, filled column (never a locked green).
+  for (let i = WORD_LEN - 1; i >= 0; i--) {
+    if (!game.locked[i] && game.cells[i] !== "") { game.cells[i] = ""; break; }
+  }
   renderCurrentRow();
 }
 
@@ -326,11 +372,14 @@ function renderCurrentRow() {
   const r = game.guesses.length;
   const row = document.querySelector(`.board-row[data-row="${r}"]`);
   if (!row) return;
+  const cursor = nextEditableCol();
   const tiles = row.querySelectorAll(".tile");
   tiles.forEach((tile, c) => {
-    const ch = game.current[c] || "";
+    const ch = game.cells[c] || "";
     tile.textContent = ch;
-    tile.classList.toggle("filled", !!ch);
+    tile.classList.toggle("filled", !!ch && !game.locked[c]);
+    tile.classList.toggle("locked", !!game.locked[c]);
+    tile.classList.toggle("cursor", c === cursor);
   });
 }
 
@@ -338,16 +387,16 @@ function renderCurrentRow() {
 // Guess submission + scoring
 // ---------------------------------------------------------------------------
 function submitGuess() {
-  if (game.current.length < WORD_LEN) { shakeRow(); toast("Not enough letters"); return; }
-  if (!VALID_GUESSES.has(game.current)) { shakeRow(); toast("Not in word list"); return; }
+  if (currentFilledCount() < WORD_LEN) { shakeRow(); toast("Not enough letters"); return; }
+  const guessed = currentGuess();
+  if (!VALID_GUESSES.has(guessed)) { shakeRow(); toast("Not in word list"); return; }
 
-  const scores = scoreGuess(game.current, game.answer);
-  paintRow(game.guesses.length, game.current, scores);
-  updateKeyStates(game.current, scores);
+  const scores = scoreGuess(guessed, game.answer);
+  paintRow(game.guesses.length, guessed, scores);
+  updateKeyStates(guessed, scores);
 
-  game.guesses.push(game.current);
-  const guessed = game.current;
-  game.current = "";
+  game.guesses.push(guessed);
+  resetCurrentRow(); // seed the next row with any (now larger) set of greens
 
   if (guessed === game.answer) {
     game.finished = true; game.won = true;
@@ -357,6 +406,8 @@ function submitGuess() {
     game.finished = true; game.won = false;
     pauseTimer();
     setTimeout(endRound, CONFIG.revealDelayMs);
+  } else {
+    renderCurrentRow(); // show carried-down greens + cursor on the new row
   }
   saveProgress();
 }
@@ -423,7 +474,6 @@ function shakeRow() {
 function startRound(offset) {
   game.roundOffset = offset;
   game.answer = extraPuzzle(offset);
-  game.current = "";
   keyStates = {};
   sessionAnswers.add(game.answer);
 
@@ -440,6 +490,7 @@ function startRound(offset) {
   game.solveMs = saved ? (saved.solveMs || 0) : 0;
   game.timerStart = null; // showScreen("game") will resume it if unfinished
   replayGuesses();
+  resetCurrentRow();       // carry down greens from any resumed guesses
 
   document.getElementById("puzzle-no").textContent = puzzleIndex(offset);
   document.getElementById("game-streak").textContent = store.data.streak;
@@ -447,6 +498,7 @@ function startRound(offset) {
   // A puzzle that's already been completed goes straight to its result — no replay.
   if (game.finished) { renderResult(); showScreen("result"); return; }
 
+  renderCurrentRow();      // paint carried-down greens + cursor before showing
   showScreen("game");
 }
 
@@ -713,7 +765,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v9 (config seam for tunables)");
+  console.log("Words on Demand — build v10 (carry down known-correct letters)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -722,5 +774,7 @@ if (typeof document !== "undefined" && document.getElementById("btn-play")) {
 // Expose internals to the test harness (Node) without affecting the browser.
 if (typeof module !== "undefined" && module.exports) {
   module.exports = { scoreGuess, nextUnplayedOffset, formatDuration, CONFIG,
-    getSessionAnswers: () => sessionAnswers };
+    getSessionAnswers: () => sessionAnswers,
+    game, knownGreens, resetCurrentRow, nextEditableCol,
+    typeLetter, removeLetter, currentGuess };
 }

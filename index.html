@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -113,6 +113,7 @@
         <li><span class="swatch correct"></span> Green = right letter, right spot.</li>
         <li><span class="swatch present"></span> Yellow = right letter, wrong spot.</li>
         <li><span class="swatch absent"></span> Gray = not in the word.</li>
+        <li>Green letters carry down to your next guess automatically — no need to retype them.</li>
       </ul>
       <button class="btn btn-primary focusable" data-nav-group="howto" id="btn-howto-back">Got it</button>
     </div>
@@ -120,9 +121,9 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v9</div>
+  <div id="build-badge">build v10</div>
 
-  <script src="words.js?v=9"></script>
-  <script src="game.js?v=9"></script>
+  <script src="words.js?v=10"></script>
+  <script src="game.js?v=10"></script>
 </body>
 </html>

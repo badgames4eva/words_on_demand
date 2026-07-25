@@ -30,6 +30,9 @@
   const ANSWERS = G.ANSWERS, VALID_GUESSES = G.VALID_GUESSES, store = G.store,
         puzzleIndex = G.puzzleIndex, DENYLIST = G.DENYLIST,
         sessionAnswers = G.sessionAnswers, CONFIG = G.CONFIG;
+  const game = G.game, knownGreens = G.knownGreens, resetCurrentRow = G.resetCurrentRow,
+        nextEditableCol = G.nextEditableCol, typeLetter = G.typeLetter,
+        removeLetter = G.removeLetter, currentGuess = G.currentGuess;
 
   // ---- scoreGuess: the classic duplicate-letter minefield ----------------
   test("scoreGuess: all correct", () => {
@@ -161,6 +164,55 @@
     ok(CONFIG.adSeconds.interstitial > 0, "interstitial seconds");
     ok(CONFIG.adSeconds.rewarded > 0, "rewarded seconds");
     ok(CONFIG.revealDelayMs >= 0, "reveal delay");
+  });
+
+  // ---- carry-down greens: don't make the player re-type known letters ----
+  // These poke the shared `game` object, so snapshot & restore around each.
+  function withRound(answer, guesses, fn) {
+    const snap = { answer: game.answer, guesses: game.guesses,
+                   cells: game.cells, locked: game.locked, finished: game.finished };
+    try {
+      game.answer = answer; game.guesses = guesses.slice(); game.finished = false;
+      resetCurrentRow();
+      fn();
+    } finally { Object.assign(game, snap); }
+  }
+  test("carry-down: greens from a prior guess are pinned by column", () => {
+    // answer PLATE; guessed PLANE -> P,L,A,_,E correct (index 3 'N' wrong).
+    withRound("PLATE", ["PLANE"], () => {
+      eq(knownGreens(), ["P", "L", "A", "", "E"]);
+      eq(game.locked, [true, true, true, false, true]);
+      eq(game.cells, ["P", "L", "A", "", "E"]);
+    });
+  });
+  test("carry-down: cursor/typing lands in the first editable empty column", () => {
+    withRound("PLATE", ["PLANE"], () => {
+      eq(nextEditableCol(), 3, "only col 3 is empty & editable");
+      typeLetter("T");
+      eq(currentGuess(), "PLATE");
+      eq(nextEditableCol(), -1, "row is now full");
+    });
+  });
+  test("carry-down: typing never overwrites a locked green", () => {
+    withRound("PLATE", ["PLANE"], () => {
+      typeLetter("Z"); // should fill col 3 only, not touch P/L/A/E
+      eq(game.cells, ["P", "L", "A", "Z", "E"]);
+    });
+  });
+  test("carry-down: DEL removes a typed letter but not a locked green", () => {
+    withRound("PLATE", ["PLANE"], () => {
+      typeLetter("T");            // -> PLATE
+      removeLetter();             // removes the typed T (col 3)
+      eq(game.cells, ["P", "L", "A", "", "E"]);
+      removeLetter();             // nothing editable left to remove
+      eq(game.cells, ["P", "L", "A", "", "E"], "locked greens survive DEL");
+    });
+  });
+  test("carry-down: no greens yet -> empty editable row, cursor at 0", () => {
+    withRound("PLATE", [], () => {
+      eq(game.locked, [false, false, false, false, false]);
+      eq(nextEditableCol(), 0);
+    });
   });
 
   // ---- formatDuration ----------------------------------------------------

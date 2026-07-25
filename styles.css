@@ -160,6 +160,24 @@ body {
 .tile.present { background: var(--present); border-color: var(--present); }
 .tile.absent  { background: var(--absent);  border-color: var(--absent); }
 
+/* Carried-down known-correct letter: shown green but dimmed so it reads as
+   "already locked in, not something you just typed". */
+.tile.locked {
+  background: var(--correct); border-color: var(--correct);
+  opacity: .8;
+}
+/* Where the next typed letter will land — a soft pulse so the eye finds it
+   across a room without a hard blinking caret. */
+.tile.cursor {
+  border-color: var(--focus-ring);
+  box-shadow: inset 0 0 0 3px rgba(255, 211, 77, .45);
+  animation: cursor-pulse 1.1s ease-in-out infinite;
+}
+@keyframes cursor-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 3px rgba(255, 211, 77, .25); }
+  50%      { box-shadow: inset 0 0 0 3px rgba(255, 211, 77, .65); }
+}
+
 /* ---------- keyboard ---------- */
 .keyboard { display: flex; flex-direction: column; gap: .5rem; align-items: center; }
 .kb-row { display: flex; gap: .5rem; }

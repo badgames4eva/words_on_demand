@@ -44,6 +44,8 @@ const exposer = `
     nextUnplayedOffset, formatDuration,
     ANSWERS, VALID_GUESSES, store, puzzleIndex, DENYLIST,
     sessionAnswers, CONFIG,
+    game, knownGreens, resetCurrentRow, nextEditableCol,
+    typeLetter, removeLetter, currentGuess,
   };`;
 
 vm.createContext(sandbox);
