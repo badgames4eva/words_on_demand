@@ -42,12 +42,38 @@ const localStorageStub = (() => {
     setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
 })();
 
+// A real (tiny) event system on window. The native-bridge tests rely on the
+// `wod:message` listener actually firing so they can reproduce a single press
+// arriving through BOTH inbound channels — a noop here would silently hide the
+// very bug the tests exist to catch.
+const listeners = new Map(); // type -> [fn]
+const eventApi = {
+  addEventListener: (type, fn) => {
+    if (!listeners.has(type)) listeners.set(type, []);
+    listeners.get(type).push(fn);
+  },
+  removeEventListener: (type, fn) => {
+    const arr = listeners.get(type);
+    if (arr) listeners.set(type, arr.filter((f) => f !== fn));
+  },
+  dispatchEvent: (evt) => {
+    (listeners.get(evt && evt.type) || []).forEach((fn) => fn(evt));
+    return true;
+  },
+};
+
 const sandbox = {
   document: documentStub,
   localStorage: localStorageStub,
   console,
-  Date, Math, JSON, Set, Array, Object,
-  setTimeout: noop, clearTimeout: noop, setInterval: () => 0, clearInterval: noop,
+  Date, Math, JSON, Set, Array, Object, Promise,
+  // Real timers (bound to Node's) so the bridge's per-press dedup flag actually
+  // resets on the next tick and the tests' `tick()` helper resolves.
+  setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: (id) => clearTimeout(id),
+  setInterval: () => 0, clearInterval: noop,
+  addEventListener: eventApi.addEventListener,
+  removeEventListener: eventApi.removeEventListener,
+  dispatchEvent: eventApi.dispatchEvent,
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
@@ -76,12 +102,19 @@ try {
   process.exit(2);
 }
 
-const results = sandbox.WOD_TEST_RESULTS || [];
-let failed = 0;
-for (const r of results) {
-  if (r.ok) console.log(`  ✓ ${r.name}`);
-  else { failed++; console.log(`  ✗ ${r.name}\n      ${r.msg}`); }
-}
-console.log(`\n${results.length - failed}/${results.length} passed` +
-  (failed ? ` — ${failed} FAILED` : " — all green"));
-process.exit(failed ? 1 : 0);
+// tests.js now runs its queue asynchronously (some native-BACK tests await a
+// real tick between simulated presses). Wait for the completion promise.
+Promise.resolve(sandbox.WOD_TEST_DONE).then((results) => {
+  results = results || sandbox.WOD_TEST_RESULTS || [];
+  let failed = 0;
+  for (const r of results) {
+    if (r.ok) console.log(`  ✓ ${r.name}`);
+    else { failed++; console.log(`  ✗ ${r.name}\n      ${r.msg}`); }
+  }
+  console.log(`\n${results.length - failed}/${results.length} passed` +
+    (failed ? ` — ${failed} FAILED` : " — all green"));
+  process.exit(failed ? 1 : 0);
+}).catch((e) => {
+  console.error("Harness error:", e.stack || e.message);
+  process.exit(2);
+});

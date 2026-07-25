@@ -799,6 +799,14 @@ function wire() {
 // separately: "End the Fun" sends `exit`, "Keep Playing" sends nothing.
 // ---------------------------------------------------------------------------
 const nativeBridge = {
+  // Guards against a single physical BACK press being handled more than once.
+  // The native app may deliver one press through BOTH inbound channels
+  // (`onMessage` AND the `wod:message` event), and both fire in the same tick.
+  // Without this, handleBack() runs twice per press: on a nested screen the 1st
+  // call goes home and the 2nd immediately re-opens the exit dialog; on home the
+  // 1st opens the dialog and the 2nd closes it (so BACK appears to do nothing).
+  _backHandledThisTick: false,
+
   get api() {
     return (typeof window !== "undefined" && window.WordsOnDemand) || null;
   },
@@ -839,17 +847,31 @@ const nativeBridge = {
   onNativeMessage(msg) {
     if (!msg || typeof msg.type !== "string") return;
     switch (msg.type) {
-      case "back":   this.handleBack(); break;
+      case "back":
+        // Collapse duplicate deliveries of the SAME press. Both channels fire
+        // synchronously in one tick, so a flag reset on the next tick lets a
+        // genuinely separate later press through while ignoring the echo.
+        if (this._backHandledThisTick) return;
+        this._backHandledThisTick = true;
+        setTimeout(() => { this._backHandledThisTick = false; }, 0);
+        this.handleBack();
+        break;
       case "pause":  pauseTimer(); break;   // freeze the solve clock while backgrounded
       case "resume": if (activeScreen === "game") resumeTimer(); break;
     }
   },
 
   // Register the two documented inbound channels and announce readiness.
+  // The onMessage callback is (re)assigned each call, but the window event
+  // listener is bound at most once — re-binding it would stack duplicate
+  // handlers that each re-fire the same press.
   init() {
     if (!this.api) return; // plain browser: nothing to wire, stays a no-op
     this.api.onMessage = (msg) => this.onNativeMessage(msg);
-    window.addEventListener("wod:message", (e) => this.onNativeMessage(e && e.detail));
+    if (!this._eventBound && typeof window !== "undefined" && window.addEventListener) {
+      window.addEventListener("wod:message", (e) => this.onNativeMessage(e && e.detail));
+      this._eventBound = true;
+    }
     this.send("ready");
   },
 };
@@ -876,7 +898,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v11 (native BACK contract + exit dialog)");
+  console.log("Words on Demand — build v12 (BACK: collapse duplicate deliveries of one press)");
   wire();
   renderHomeStats();
   showScreen("home");

@@ -44,24 +44,28 @@
   </script>
   <script src="tests.js"></script>
   <script>
-    const results = window.WOD_TEST_RESULTS || [];
-    const failed = results.filter((r) => !r.ok).length;
-    const summary = document.getElementById("summary");
-    summary.className = failed ? "fail" : "pass";
-    summary.textContent = `${results.length - failed}/${results.length} passed` +
-      (failed ? ` — ${failed} FAILED` : " — all green");
-    const list = document.getElementById("list");
-    for (const r of results) {
-      const li = document.createElement("li");
-      li.className = r.ok ? "ok" : "bad";
-      li.textContent = r.name;
-      if (!r.ok) {
-        const m = document.createElement("div");
-        m.className = "msg"; m.textContent = r.msg;
-        li.appendChild(m);
+    // tests.js runs its queue asynchronously (native-BACK tests await a real
+    // tick between simulated presses), so wait for the completion promise.
+    Promise.resolve(window.WOD_TEST_DONE).then((results) => {
+      results = results || window.WOD_TEST_RESULTS || [];
+      const failed = results.filter((r) => !r.ok).length;
+      const summary = document.getElementById("summary");
+      summary.className = failed ? "fail" : "pass";
+      summary.textContent = `${results.length - failed}/${results.length} passed` +
+        (failed ? ` — ${failed} FAILED` : " — all green");
+      const list = document.getElementById("list");
+      for (const r of results) {
+        const li = document.createElement("li");
+        li.className = r.ok ? "ok" : "bad";
+        li.textContent = r.name;
+        if (!r.ok) {
+          const m = document.createElement("div");
+          m.className = "msg"; m.textContent = r.msg;
+          li.appendChild(m);
+        }
+        list.appendChild(li);
       }
-      list.appendChild(li);
-    }
+    });
   </script>
 </body>
 </html>

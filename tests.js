@@ -12,10 +12,16 @@
    ============================================================ */
 (function (root) {
   const results = [];
-  function test(name, fn) {
-    try { fn(); results.push({ name, ok: true }); }
-    catch (e) { results.push({ name, ok: false, msg: e.message }); }
-  }
+  // Tests are queued and run sequentially (they share the global `game`/bridge
+  // state, so they must not interleave). A test fn may be async — the runner
+  // awaits it — which lets the native-BACK tests advance a real tick between
+  // simulated presses (see `tick()` below).
+  const queue = [];
+  function test(name, fn) { queue.push({ name, fn }); }
+  // A macrotask boundary. The bridge clears its per-press dedup flag on the next
+  // tick, so awaiting this between simulated presses models two *separate*
+  // presses; NOT awaiting models one press arriving twice within a single tick.
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   function eq(actual, expected, note) {
     const a = JSON.stringify(actual), b = JSON.stringify(expected);
     if (a !== b) throw new Error(`${note || ""} expected ${b}, got ${a}`);
@@ -228,19 +234,49 @@
     if (typeof window !== "undefined") {
       window.WordsOnDemand = { postMessage: (m) => sent.push(m), onMessage: null };
     }
-    // Make sure we start from a clean slate: home screen, no modal.
+    // Wire the bridge exactly as it is in production: both inbound channels.
+    // This is what makes the double-delivery reproducible in tests.
+    nativeBridge.init();
+    // A press as native REALLY delivers it: through both channels in one tick.
+    // Channel A: the injected onMessage callback. Channel B: the wod:message
+    // event. `dispatchEvent` needs a real Event in a browser but takes a plain
+    // object in the Node stub — build a CustomEvent when the constructor exists.
+    const api = (typeof window !== "undefined") ? window.WordsOnDemand : null;
+    const fireOnMessage = (msg) => { if (api && typeof api.onMessage === "function") api.onMessage(msg); };
+    const fireEvent = (msg) => {
+      if (typeof window === "undefined" || !window.dispatchEvent) return;
+      const evt = (typeof CustomEvent === "function")
+        ? new CustomEvent("wod:message", { detail: msg })
+        : { type: "wod:message", detail: msg };
+      window.dispatchEvent(evt);
+    };
+    // Simulate ONE physical back press: fire both channels synchronously (same
+    // tick), just like the native host does. The dedup guard must collapse them.
+    const pressBack = () => {
+      fireOnMessage({ type: "back" });
+      fireEvent({ type: "back" });
+    };
+    // Make sure we start from a clean slate: home screen, no modal, and no
+    // leftover per-press dedup flag from a prior sync test (its reset tick may
+    // not have fired yet).
+    nativeBridge._backHandledThisTick = false;
     if (isModalOpen()) closeModal();
     showScreen("home");
-    try { fn(sent); }
-    finally {
+    sent.length = 0; // drop the `ready` from init(); tests assert on press output
+    const done = fn(sent, pressBack);
+    const cleanup = () => {
       if (isModalOpen()) closeModal();
       if (typeof window !== "undefined") window.WordsOnDemand = realApi;
-    }
+    };
+    // Support both sync and async test bodies.
+    if (done && typeof done.then === "function") return done.finally(cleanup);
+    cleanup();
+    return undefined;
   }
 
   test("back: on home raises the exit dialog and replies back-handled first", () => {
-    withBridge((sent) => {
-      nativeBridge.onNativeMessage({ type: "back" });
+    withBridge((sent, pressBack) => {
+      pressBack();
       // Must reply synchronously so native doesn't exit under the dialog...
       ok(sent.some((m) => m.type === "back-handled"), "sent back-handled");
       // ...and must NOT have sent exit merely by opening the dialog.
@@ -248,26 +284,49 @@
       ok(isModalOpen(), "exit dialog is open");
     });
   });
-  test("back: closes an open modal instead of navigating", () => {
-    withBridge((sent) => {
-      nativeBridge.onNativeMessage({ type: "back" }); // opens dialog on home
-      sent.length = 0;
-      nativeBridge.onNativeMessage({ type: "back" }); // second back closes it
-      ok(!isModalOpen(), "modal closed");
-      eq(sent.filter((m) => m.type === "back-handled").length, 1, "one reply");
-      ok(!sent.some((m) => m.type === "exit"), "closing modal is not an exit");
+
+  // The on-device regression: ONE press must be handled ONCE even though the
+  // native host delivers it through both inbound channels in the same tick.
+  test("back: a single press delivered via BOTH channels is handled once", () => {
+    withBridge((sent, pressBack) => {
+      pressBack(); // fires onMessage + wod:message together (one physical press)
+      eq(sent.filter((m) => m.type === "back-handled").length, 1,
+         "exactly one back-handled for one press");
+      ok(isModalOpen(), "dialog opened once, not opened-then-closed");
     });
   });
-  test("back: off home navigates to previous screen (home) and replies", () => {
-    withBridge((sent) => {
+
+  // The exact flow the user typed:
+  //   Nested > Back > Home (no dialog) > Back > Exit dialog.
+  test("back: nested→home shows NO dialog; only a second press on home exits", async () => {
+    await withBridge(async (sent, pressBack) => {
       showScreen("howto");
       sent.length = 0;
-      nativeBridge.onNativeMessage({ type: "back" });
-      eq(getActiveScreen(), "home", "navigated home");
-      ok(sent.some((m) => m.type === "back-handled"), "sent back-handled");
-      ok(!isModalOpen(), "no dialog off-home");
+      pressBack();                                  // press #1: nested → home
+      eq(getActiveScreen(), "home", "first back lands on home");
+      ok(!isModalOpen(), "NO dialog after landing on home (the bug was a dialog here)");
+      eq(sent.filter((m) => m.type === "back-handled").length, 1, "one reply for press #1");
+      await tick();                                 // separate physical press = later tick
+      sent.length = 0;
+      pressBack();                                  // press #2: on home → exit dialog
+      ok(isModalOpen(), "second back on home raises the exit dialog");
+      eq(sent.filter((m) => m.type === "back-handled").length, 1, "one reply for press #2");
     });
   });
+
+  test("back: on home, then a later press closes the dialog (not a no-op)", async () => {
+    await withBridge(async (sent, pressBack) => {
+      pressBack();                                  // press #1: opens dialog on home
+      ok(isModalOpen(), "dialog open");
+      await tick();
+      sent.length = 0;
+      pressBack();                                  // press #2: closes the dialog
+      ok(!isModalOpen(), "dialog closed by the next press");
+      eq(sent.filter((m) => m.type === "back-handled").length, 1, "one reply");
+      ok(!sent.some((m) => m.type === "exit"), "closing the dialog is not an exit");
+    });
+  });
+
   test("back: unknown/malformed native messages are ignored", () => {
     withBridge((sent) => {
       nativeBridge.onNativeMessage(null);
@@ -295,6 +354,16 @@
   test("formatDuration: minutes:seconds with zero-pad", () => { eq(formatDuration(72000), "1:12"); });
   test("formatDuration: exact minute", () => { eq(formatDuration(60000), "1:00"); });
 
-  root.WOD_TEST_RESULTS = results;
-  return results;
+  // Drain the queue sequentially, awaiting async tests. Exposes a promise so the
+  // runners (Node + tests.html) can wait for completion before reporting.
+  async function run() {
+    for (const { name, fn } of queue) {
+      try { await fn(); results.push({ name, ok: true }); }
+      catch (e) { results.push({ name, ok: false, msg: e.message }); }
+    }
+    root.WOD_TEST_RESULTS = results;
+    return results;
+  }
+  root.WOD_TEST_DONE = run();
+  return root.WOD_TEST_DONE;
 })(typeof globalThis !== "undefined" ? globalThis : this);
