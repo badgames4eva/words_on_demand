@@ -63,6 +63,7 @@ function saveProgress() {
     won: game.won,
     hintsUsed: game.hintsUsed,
     solveMs: game.solveMs, // active solve time (timer pauses off the game screen)
+    startedAt: game.startedAt, // device time the puzzle was first opened
     answer: game.answer, // stored so history can render without re-deriving
   };
   store.save();
@@ -85,6 +86,7 @@ const game = {
   hintsUsed: 0,
   solveMs: 0,        // active solve time; the timer pauses off the game screen
   timerStart: null,  // Date.now() when the timer last resumed; null while paused
+  startedAt: null,   // device wall-clock (Date.now()) when this puzzle was first opened
   roundOffset: 0,    // 0 = today's puzzle; grows with "one more round"
 };
 
@@ -138,6 +140,17 @@ function formatDuration(ms) {
   const m = Math.floor(total / 60);
   const s = total % 60;
   return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}s`;
+}
+// A short device-local "when you started" stamp for history, e.g.
+// "Jul 24, 2026 · 3:07 PM". Returns "" for missing timestamps (older saves that
+// predate this field) so the UI just omits the line rather than showing junk.
+function formatStartedAt(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return "";
+  const date = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${date} · ${time}`;
 }
 let activeScreen = "home";
 
@@ -526,6 +539,8 @@ function startRound(offset) {
   game.won = saved ? saved.won : false;
   game.hintsUsed = saved ? (saved.hintsUsed || 0) : 0;
   game.solveMs = saved ? (saved.solveMs || 0) : 0;
+  // First-open device timestamp: keep the saved one on resume, else stamp now.
+  game.startedAt = (saved && saved.startedAt) ? saved.startedAt : Date.now();
   game.timerStart = null; // showScreen("game") will resume it if unfinished
   replayGuesses();
   resetCurrentRow();       // carry down greens from any resumed guesses
@@ -742,10 +757,12 @@ function renderHistory() {
     meta.className = "history-meta";
     const hintNote = p.hintsUsed ? ` · 💡 ${p.hintsUsed}` : "";
     const timeNote = p.won && p.solveMs > 0 ? ` · ⏱ ${formatDuration(p.solveMs)}` : "";
+    const startedNote = formatStartedAt(p.startedAt);
     meta.innerHTML =
       `<div class="history-title">Puzzle #${p.idx}` +
       (answer ? ` <span class="history-word">${answer}</span>` : "") + `</div>` +
-      `<div class="history-sub">${p.won ? `Solved in ${p.guesses.length}` : "Not solved"}${timeNote}${hintNote}</div>`;
+      `<div class="history-sub">${p.won ? `Solved in ${p.guesses.length}` : "Not solved"}${timeNote}${hintNote}</div>` +
+      (startedNote ? `<div class="history-when">🗓 ${startedNote}</div>` : "");
 
     row.appendChild(meta);
     row.appendChild(grid);
@@ -898,7 +915,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v12 (BACK: collapse duplicate deliveries of one press)");
+  console.log("Words on Demand — build v13 (history shows start date/time played)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -907,7 +924,7 @@ if (typeof document !== "undefined" && document.getElementById("btn-play")) {
 
 // Expose internals to the test harness (Node) without affecting the browser.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { scoreGuess, nextUnplayedOffset, formatDuration, CONFIG,
+  module.exports = { scoreGuess, nextUnplayedOffset, formatDuration, formatStartedAt, CONFIG,
     getSessionAnswers: () => sessionAnswers,
     game, knownGreens, resetCurrentRow, nextEditableCol,
     typeLetter, removeLetter, currentGuess,

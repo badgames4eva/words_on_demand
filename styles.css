@@ -250,6 +250,7 @@ body {
 .history-title { font-size: 1.4rem; font-weight: 700; }
 .history-word { color: var(--accent); letter-spacing: .08em; margin-left: .4rem; }
 .history-sub { color: var(--muted); font-size: 1.1rem; margin-top: .2rem; }
+.history-when { color: var(--muted); font-size: .95rem; margin-top: .15rem; opacity: .8; }
 .history-grid { display: inline-grid; gap: .18rem; }
 .history-grid .mini-row { display: grid; grid-template-columns: repeat(5, .9rem); gap: .18rem; }
 .history-grid .mini { width: .9rem; height: .9rem; border-radius: 2px; background: var(--absent); }

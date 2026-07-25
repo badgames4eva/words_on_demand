@@ -32,7 +32,7 @@
   // passed in by the Node runner).
   const G = root.WOD_UNDER_TEST || root;
   const { scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
-          nextUnplayedOffset, formatDuration } = G;
+          nextUnplayedOffset, formatDuration, formatStartedAt } = G;
   const ANSWERS = G.ANSWERS, VALID_GUESSES = G.VALID_GUESSES, store = G.store,
         puzzleIndex = G.puzzleIndex, DENYLIST = G.DENYLIST,
         sessionAnswers = G.sessionAnswers, CONFIG = G.CONFIG;
@@ -353,6 +353,22 @@
   test("formatDuration: rounds to nearest second", () => { eq(formatDuration(5400), "5s"); });
   test("formatDuration: minutes:seconds with zero-pad", () => { eq(formatDuration(72000), "1:12"); });
   test("formatDuration: exact minute", () => { eq(formatDuration(60000), "1:00"); });
+
+  // ---- formatStartedAt: device-time stamp for history --------------------
+  test("formatStartedAt: missing/zero timestamp -> empty (old saves omit it)", () => {
+    eq(formatStartedAt(0), "");
+    eq(formatStartedAt(null), "");
+    eq(formatStartedAt(undefined), "");
+  });
+  test("formatStartedAt: NaN/garbage -> empty, never 'Invalid Date'", () => {
+    eq(formatStartedAt(NaN), "");
+  });
+  test("formatStartedAt: a real timestamp renders a non-empty date · time", () => {
+    const s = formatStartedAt(Date.UTC(2026, 6, 24, 15, 7)); // Jul 24 2026
+    ok(typeof s === "string" && s.length > 0, "produced a stamp");
+    ok(s.includes("·"), "has the date · time separator");
+    ok(/2026/.test(s), "includes the year");
+  });
 
   // Drain the queue sequentially, awaiting async tests. Exposes a promise so the
   // runners (Node + tests.html) can wait for completion before reporting.
