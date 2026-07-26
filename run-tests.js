@@ -87,7 +87,8 @@ const exposer = `
     ANSWERS, VALID_GUESSES, store, puzzleIndex, DENYLIST,
     sessionAnswers, CONFIG,
     game, knownGreens, resetCurrentRow, nextEditableCol,
-    typeLetter, removeLetter, currentGuess,
+    typeLetter, removeLetter, currentGuess, wipeCurrentRow,
+    rewindPress, rewindRelease,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen,
   };`;

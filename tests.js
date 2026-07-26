@@ -38,7 +38,9 @@
         sessionAnswers = G.sessionAnswers, CONFIG = G.CONFIG;
   const game = G.game, knownGreens = G.knownGreens, resetCurrentRow = G.resetCurrentRow,
         nextEditableCol = G.nextEditableCol, typeLetter = G.typeLetter,
-        removeLetter = G.removeLetter, currentGuess = G.currentGuess;
+        removeLetter = G.removeLetter, currentGuess = G.currentGuess,
+        wipeCurrentRow = G.wipeCurrentRow, rewindPress = G.rewindPress,
+        rewindRelease = G.rewindRelease;
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
         getActiveScreen = G.getActiveScreen;
@@ -243,6 +245,52 @@
     withRound("PLATE", [], () => {
       eq(game.locked, [false, false, false, false, false]);
       eq(nextEditableCol(), 0);
+    });
+  });
+
+  // ---- Rewind-button delete: tap = one letter, hold = wipe whole row -------
+  // The hold fires on a real timer (CONFIG.holdToWipeMs), so these await a delay
+  // shorter/longer than the threshold to model a tap vs. a hold. wipeCurrentRow
+  // is also tested directly (deterministic, no timer).
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  // Like withRound, but keeps the round state alive across awaits (the tap/hold
+  // timer resolves after fn's first synchronous chunk) — restores when fn's
+  // promise settles instead of the moment it returns.
+  async function withRoundAsync(answer, guesses, fn) {
+    const snap = { answer: game.answer, guesses: game.guesses,
+                   cells: game.cells, locked: game.locked, finished: game.finished };
+    try {
+      game.answer = answer; game.guesses = guesses.slice(); game.finished = false;
+      resetCurrentRow();
+      await fn();
+    } finally { Object.assign(game, snap); }
+  }
+  test("wipe: clears the entire row including locked greens", () => {
+    withRound("PLATE", ["PLANE"], () => {
+      typeLetter("T");                 // -> PLATE, greens P/L/A/E locked
+      wipeCurrentRow();
+      eq(game.cells, ["", "", "", "", ""], "all cells cleared");
+      eq(game.locked, [false, false, false, false, false], "greens unlocked too");
+      eq(nextEditableCol(), 0, "cursor back to column 0");
+    });
+  });
+  test("rewind: a quick tap deletes exactly one letter (greens survive)", async () => {
+    await withRoundAsync("PLATE", ["PLANE"], async () => {
+      typeLetter("T");                 // -> PLATE
+      rewindPress();
+      await delay(50);                 // release before the hold threshold => tap
+      rewindRelease();
+      eq(game.cells, ["P", "L", "A", "", "E"], "one letter removed, greens kept");
+    });
+  });
+  test("rewind: holding past the threshold wipes the whole row", async () => {
+    await withRoundAsync("PLATE", ["PLANE"], async () => {
+      typeLetter("T");                 // -> PLATE
+      rewindPress();
+      await delay(620);                // past CONFIG.holdToWipeMs (500ms) => wipe
+      rewindRelease();
+      eq(game.cells, ["", "", "", "", ""], "row wiped by the hold");
+      eq(game.locked, [false, false, false, false, false], "greens cleared");
     });
   });
 

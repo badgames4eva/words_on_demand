@@ -20,6 +20,7 @@
   --absent: #3a4060;
 
   --focus-ring: #ffd34d;
+  --del: #c65b5b;
 
   /* 10-foot scale: sizes are deliberately large, but clamp to viewport height so
      the board + keyboard + hint always fit (big TVs -> 5.2rem; laptops -> smaller). */
@@ -192,6 +193,9 @@ body {
 .key.key-wide { min-width: 6rem; font-size: 1.1rem; }
 /* ENTER rendered as a → arrow and accented as the primary action. */
 .key.key-enter { background: var(--accent); font-size: 1.8rem; }
+/* DEL/erase in its own warm-red so it reads as "remove", distinct from the blue
+   ENTER and the neutral letter keys. */
+.key.key-del { background: var(--del); font-size: 1.6rem; }
 .key.correct { background: var(--correct); }
 .key.present { background: var(--present); }
 .key.absent  { background: var(--absent); opacity: .55; }

@@ -40,12 +40,14 @@ the actual page.
 
 ## Controls (remote contract)
 
-| Remote      | Keyboard (desktop) | Action                         |
-|-------------|--------------------|--------------------------------|
-| D-pad       | Arrow keys         | Move focus                     |
-| OK / Select | Enter              | Activate focused element       |
-| Back        | Backspace / Esc    | Close dialog, delete letter, or go home |
-| —           | A–Z keys           | Type directly (testing only)   |
+| Remote        | Keyboard (desktop) | Action                                        |
+|---------------|--------------------|-----------------------------------------------|
+| D-pad         | Arrow keys         | Move focus                                    |
+| OK / Select   | Enter              | Activate focused element                      |
+| Play          | (MediaPlay)        | Same as OK / Select                           |
+| Rewind        | (MediaRewind)      | Delete: tap = one letter, hold = wipe the row (incl. carried-down greens) |
+| Back          | Backspace / Esc    | Close dialog, delete letter, or go home       |
+| —             | A–Z keys           | Type directly (testing only)                  |
 
 ### Native BACK contract (Fire OS / Vega wrapper)
 

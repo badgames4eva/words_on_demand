@@ -16,6 +16,7 @@ const CONFIG = {
   maxGuesses: 6,          // rows on the board
   storageKey: "wordsondemand.v1",
   revealDelayMs: 700,     // pause after the final guess before showing the result
+  holdToWipeMs: 500,      // hold the remote's Rewind this long to clear the whole row
   adSeconds: {
     interstitial: 5,      // "one more round" break ad
     rewarded: 5,          // hint (rewarded video) — reward granted on completion
@@ -275,9 +276,20 @@ document.addEventListener("keydown", (e) => {
     case "ArrowLeft":  inputMode = "dpad"; moveFocus("left");  e.preventDefault(); break;
     case "ArrowRight": inputMode = "dpad"; moveFocus("right"); e.preventDefault(); break;
     case "Enter":
+    // Remote's Play / Play-Pause button acts as OK / Select.
+    case "MediaPlay":
+    case "MediaPlayPause":
       // Keyboard-typing mode in the game: Enter submits the guess.
       if (activeScreen === "game" && inputMode === "keyboard") onKeyPress("ENTER");
       else activateFocused();
+      e.preventDefault();
+      break;
+    // Remote's Rewind button is DELETE while solving: tap = one letter, hold =
+    // wipe the whole row (see rewindPress/rewindRelease). Anywhere else it's a
+    // no-op so it can't hijack navigation.
+    case "MediaRewind":
+    case "MediaTrackPrevious":
+      if (activeScreen === "game" && !game.finished) rewindPress();
       e.preventDefault();
       break;
     case "Backspace":
@@ -291,6 +303,14 @@ document.addEventListener("keydown", (e) => {
         inputMode = "keyboard";
         typeLetter(e.key.toUpperCase());
       }
+  }
+});
+
+// Rewind is a press/hold gesture, so its action fires on release (keyup).
+document.addEventListener("keyup", (e) => {
+  if (e.key === "MediaRewind" || e.key === "MediaTrackPrevious") {
+    if (activeScreen === "game") rewindRelease();
+    e.preventDefault();
   }
 });
 
@@ -347,7 +367,7 @@ function buildKeyboard() {
     for (const k of rowKeys) {
       const key = document.createElement("button");
       key.className = "key focusable" + (k.length > 1 ? " key-wide" : "") +
-        (k === "ENTER" ? " key-enter" : "");
+        (k === "ENTER" ? " key-enter" : "") + (k === "DEL" ? " key-del" : "");
       key.dataset.navGroup = "keyboard";
       key.dataset.key = k;
       key.textContent = k === "DEL" ? "⌫" : k === "ENTER" ? "→" : k;
@@ -417,6 +437,39 @@ function removeLetter() {
     if (!game.locked[i] && game.cells[i] !== "") { game.cells[i] = ""; break; }
   }
   renderCurrentRow();
+}
+
+// Clear the ENTIRE in-progress row, including carried-down greens — the payoff
+// for holding the remote's Rewind button. Only affects the current edit; the
+// greens are re-derived from game.guesses on the next row, so this doesn't erase
+// history, it just lets the player abandon a pinned start and type freely.
+function wipeCurrentRow() {
+  if (game.finished) return;
+  game.cells = new Array(WORD_LEN).fill("");
+  game.locked = new Array(WORD_LEN).fill(false);
+  renderCurrentRow();
+}
+
+// Rewind-button gesture: a quick tap deletes one letter; holding past
+// CONFIG.holdToWipeMs wipes the whole row. Implemented as press/release so it
+// works for a remote key (keydown/keyup) and is unit-testable without the DOM.
+const rewindHold = { timer: null, wiped: false, holding: false };
+function rewindPress() {
+  if (rewindHold.holding) return; // ignore keydown auto-repeat while held
+  rewindHold.holding = true;
+  rewindHold.wiped = false;
+  rewindHold.timer = setTimeout(() => {
+    wipeCurrentRow();
+    rewindHold.wiped = true;
+    rewindHold.timer = null;
+  }, CONFIG.holdToWipeMs);
+}
+function rewindRelease() {
+  if (!rewindHold.holding) return;
+  rewindHold.holding = false;
+  if (rewindHold.timer) { clearTimeout(rewindHold.timer); rewindHold.timer = null; }
+  if (!rewindHold.wiped) removeLetter(); // released before the wipe fired => a tap
+  rewindHold.wiped = false;
 }
 
 function renderCurrentRow() {
@@ -915,7 +968,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v16 (scramble daily order so consecutive plays aren't alphabetical)");
+  console.log("Words on Demand — build v17 (remote Play=OK, Rewind=delete/hold-to-wipe, DEL key recolored)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -927,7 +980,8 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = { scoreGuess, nextUnplayedOffset, formatDuration, formatStartedAt, CONFIG,
     getSessionAnswers: () => sessionAnswers,
     game, knownGreens, resetCurrentRow, nextEditableCol,
-    typeLetter, removeLetter, currentGuess,
+    typeLetter, removeLetter, currentGuess, wipeCurrentRow,
+    rewindPress, rewindRelease,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };
 }
