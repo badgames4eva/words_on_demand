@@ -63,6 +63,7 @@ function saveProgress() {
     finished: game.finished,
     won: game.won,
     hintsUsed: game.hintsUsed,
+    hintRow: game.hintRow, // row a hint was spent on (one-hint-per-row cap survives resume)
     solveMs: game.solveMs, // active solve time (timer pauses off the game screen)
     startedAt: game.startedAt, // device time the puzzle was first opened
     answer: game.answer, // stored so history can render without re-deriving
@@ -85,6 +86,7 @@ const game = {
   finished: false,
   won: false,
   hintsUsed: 0,
+  hintRow: -1,       // row index a hint was last spent on; caps hints at one/row
   solveMs: 0,        // active solve time; the timer pauses off the game screen
   timerStart: null,  // Date.now() when the timer last resumed; null while paused
   startedAt: null,   // device wall-clock (Date.now()) when this puzzle was first opened
@@ -512,6 +514,7 @@ function submitGuess() {
     setTimeout(endRound, CONFIG.revealDelayMs);
   } else {
     renderCurrentRow(); // show carried-down greens + cursor on the new row
+    refreshHintButton(); // new row => a fresh hint becomes available
   }
   saveProgress();
 }
@@ -591,6 +594,7 @@ function startRound(offset) {
   game.finished = saved ? saved.finished : false;
   game.won = saved ? saved.won : false;
   game.hintsUsed = saved ? (saved.hintsUsed || 0) : 0;
+  game.hintRow = saved && saved.hintRow != null ? saved.hintRow : -1;
   game.solveMs = saved ? (saved.solveMs || 0) : 0;
   // First-open device timestamp: keep the saved one on resume, else stamp now.
   game.startedAt = (saved && saved.startedAt) ? saved.startedAt : Date.now();
@@ -605,6 +609,7 @@ function startRound(offset) {
   if (game.finished) { renderResult(); showScreen("result"); return; }
 
   renderCurrentRow();      // paint carried-down greens + cursor before showing
+  refreshHintButton();     // reflect one-per-row / last-letter rules for this board
   showScreen("game");
 }
 
@@ -706,24 +711,55 @@ function playAd(seconds, onDone) {
 }
 
 // ---------------------------------------------------------------------------
-// Hint — rewarded video pattern: opt-in, reveals one correct letter.
+// Hint — rewarded video pattern: opt-in, reveals one random unknown letter.
+// Rules: one hint per row (resets when you submit and move to the next row);
+// disabled once only a single unknown letter remains (revealing it would just
+// hand over the answer); disabled when the row is already solved-by-greens.
 // ---------------------------------------------------------------------------
-function useHint() {
-  if (game.finished) return;
-  // Find a position not yet revealed as correct in the current guess.
+
+// Columns whose correct letter hasn't surfaced as a green in any prior guess.
+function unrevealedColumns() {
   const revealed = new Set();
   game.guesses.forEach((g) => {
     for (let i = 0; i < WORD_LEN; i++) if (g[i] === game.answer[i]) revealed.add(i);
   });
-  const candidates = [];
-  for (let i = 0; i < WORD_LEN; i++) if (!revealed.has(i)) candidates.push(i);
-  if (candidates.length === 0) { toast("All letters already revealed!"); return; }
+  const cols = [];
+  for (let i = 0; i < WORD_LEN; i++) if (!revealed.has(i)) cols.push(i);
+  return cols;
+}
+
+// A hint is offered only when: the puzzle's live, no hint spent on THIS row yet,
+// and there are at least TWO unknown letters (never reveal the last one).
+function hintAvailable() {
+  if (game.finished) return false;
+  if (game.hintRow === game.guesses.length) return false; // already used this row
+  return unrevealedColumns().length >= 2;
+}
+
+// Grey out / re-enable the button to match hintAvailable(). Keeps it focusable
+// so D-pad focus doesn't get stranded, but a press while disabled is a no-op.
+function refreshHintButton() {
+  const btn = document.getElementById("btn-hint");
+  if (!btn) return;
+  const on = hintAvailable();
+  btn.classList.toggle("is-disabled", !on);
+  btn.setAttribute("aria-disabled", on ? "false" : "true");
+}
+
+function useHint() {
+  if (!hintAvailable()) return;
+  const candidates = unrevealedColumns();
+  const rowAtRequest = game.guesses.length; // pin the row the hint is spent on
 
   playAd(CONFIG.adSeconds.rewarded, () => {
-    const pos = candidates[0];
+    // Pick a RANDOM unknown column, not the left-most, so hints don't leak the
+    // word left-to-right. Vary by a non-persisted draw (fine for a UX sprinkle).
+    const pos = candidates[Math.floor(Math.random() * candidates.length)];
     game.hintsUsed += 1;
+    game.hintRow = rowAtRequest; // burn the hint for this row
     saveProgress();
     showScreen("game");
+    refreshHintButton();
     toast(`Letter ${pos + 1} is “${game.answer[pos]}”`);
   });
 }
@@ -968,7 +1004,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v17 (remote Play=OK, Rewind=delete/hold-to-wipe, DEL key recolored)");
+  console.log("Words on Demand — build v18 (hints: random unknown letter, one per row, disabled on last letter)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -982,6 +1018,7 @@ if (typeof module !== "undefined" && module.exports) {
     game, knownGreens, resetCurrentRow, nextEditableCol,
     typeLetter, removeLetter, currentGuess, wipeCurrentRow,
     rewindPress, rewindRelease,
+    unrevealedColumns, hintAvailable,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };
 }

@@ -40,7 +40,8 @@
         nextEditableCol = G.nextEditableCol, typeLetter = G.typeLetter,
         removeLetter = G.removeLetter, currentGuess = G.currentGuess,
         wipeCurrentRow = G.wipeCurrentRow, rewindPress = G.rewindPress,
-        rewindRelease = G.rewindRelease;
+        rewindRelease = G.rewindRelease, unrevealedColumns = G.unrevealedColumns,
+        hintAvailable = G.hintAvailable;
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
         getActiveScreen = G.getActiveScreen;
@@ -291,6 +292,60 @@
       rewindRelease();
       eq(game.cells, ["", "", "", "", ""], "row wiped by the hold");
       eq(game.locked, [false, false, false, false, false], "greens cleared");
+    });
+  });
+
+  // ---- hint rules: random unknown letter, one per row, never the last ------
+  // unrevealedColumns/hintAvailable are pure over game state, so poke it with
+  // withRound and read back. game.hintRow is the one-per-row latch; it equals
+  // game.guesses.length once a hint is spent on the current row.
+  function withHintState(answer, guesses, hintRow, fn) {
+    const snap = { hintRow: game.hintRow };
+    withRound(answer, guesses, () => {
+      game.hintRow = hintRow;
+      fn();
+    });
+    game.hintRow = snap.hintRow;
+  }
+  test("hint: unrevealedColumns lists only columns with no prior green", () => {
+    // answer PLATE; guessed PLANE -> greens at 0,1,2,4; only col 3 is unknown.
+    withRound("PLATE", ["PLANE"], () => {
+      eq(unrevealedColumns(), [3], "col 3 is the only un-greened column");
+    });
+  });
+  test("hint: fresh row with >=2 unknowns offers a hint", () => {
+    withHintState("PLATE", [], -1, () => {
+      eq(unrevealedColumns().length, 5, "nothing revealed yet");
+      ok(hintAvailable(), "hint available on a fresh 5-unknown row");
+    });
+  });
+  test("hint: disabled when only one unknown letter remains", () => {
+    // PLANE reveals all but col 3 -> a single unknown -> revealing it = the answer
+    withHintState("PLATE", ["PLANE"], -1, () => {
+      eq(unrevealedColumns().length, 1, "one unknown left");
+      ok(!hintAvailable(), "no hint when it would hand over the last letter");
+    });
+  });
+  test("hint: one per row — spent on this row disables until next row", () => {
+    // Two unknowns (cols 3,4 via a guess that greens 0,1,2), but hintRow already
+    // equals guesses.length => the hint for THIS row is spent.
+    withHintState("PLANK", ["PLAID"], 1, () => {
+      ok(unrevealedColumns().length >= 2, "still >=2 unknowns");
+      eq(game.guesses.length, 1, "on row index 1");
+      ok(!hintAvailable(), "hint already burned for this row");
+    });
+  });
+  test("hint: a stale hintRow from an earlier row doesn't block the new row", () => {
+    // Spent a hint on row 0 (hintRow=0) but we're now on row 1 -> available again.
+    withHintState("PLANK", ["PLAID"], 0, () => {
+      eq(game.guesses.length, 1, "advanced to row 1");
+      ok(hintAvailable(), "new row => fresh hint");
+    });
+  });
+  test("hint: never offered once the puzzle is finished", () => {
+    withHintState("PLATE", [], -1, () => {
+      game.finished = true;
+      ok(!hintAvailable(), "no hint after the round ends");
     });
   });
 

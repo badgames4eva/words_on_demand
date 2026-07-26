@@ -69,6 +69,10 @@ body {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 .btn-ghost { background: transparent; border: 3px solid var(--absent); }
+/* A focusable-but-inert button (e.g. the hint once it's spent for the row or
+   only one letter remains). Dimmed; still shows the focus ring so the D-pad
+   never gets stranded, but a press is a no-op in JS. */
+.btn.is-disabled { opacity: .4; }
 
 /* THE focus state — the single most important 10-foot affordance */
 .focusable.is-focused {
