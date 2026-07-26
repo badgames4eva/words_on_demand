@@ -32,7 +32,8 @@
   // passed in by the Node runner).
   const G = root.WOD_UNDER_TEST || root;
   const { scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
-          nextUnplayedOffset, formatDuration, formatStartedAt } = G;
+          nextUnplayedOffset, pruneForwardWalkArtifacts,
+          formatDuration, formatStartedAt } = G;
   const ANSWERS = G.ANSWERS, VALID_GUESSES = G.VALID_GUESSES, store = G.store,
         puzzleIndex = G.puzzleIndex, DENYLIST = G.DENYLIST,
         sessionAnswers = G.sessionAnswers, CONFIG = G.CONFIG;
@@ -145,26 +146,40 @@
     eq(clobbered, [], "a denied word is also a daily answer");
   });
 
-  // ---- nextUnplayedOffset: One More Round skips finished puzzles ---------
-  // Stateful: swap store.data.progress, then restore, so we never touch real stats.
-  test("nextUnplayedOffset: skips consecutively-finished puzzles", () => {
+  // ---- nextUnplayedOffset: One More Round walks BACKWARD past finished -----
+  // Extra rounds go into PAST days (negative offsets) so they never consume an
+  // upcoming daily puzzle. Stateful: swap store.data.progress, then restore.
+  test("nextUnplayedOffset: walks backward, skipping finished past puzzles", () => {
     const saved = store.data.progress;
     try {
       store.data.progress = {};
-      // Mark offsets 0,1,2 finished; 3 is fresh.
-      for (let off = 0; off <= 2; off++) {
+      // Mark offsets -1,-2,-3 finished; -4 is fresh.
+      for (let off = -1; off >= -3; off--) {
         store.data.progress[puzzleIndex(off)] = { finished: true };
       }
-      eq(nextUnplayedOffset(0), 3, "should jump past 0,1,2 to 3");
+      eq(nextUnplayedOffset(0), -4, "should jump past -1,-2,-3 to -4");
     } finally { store.data.progress = saved; }
   });
-  test("nextUnplayedOffset: returns very next offset when nothing finished", () => {
+  test("nextUnplayedOffset: never returns a future/today offset", () => {
     const saved = store.data.progress;
     const savedSession = new Set(sessionAnswers);
     try {
       store.data.progress = {};
       sessionAnswers.clear();
-      eq(nextUnplayedOffset(5), 6);
+      ok(nextUnplayedOffset(0) < 0, "from today, next extra round is a past day");
+      ok(nextUnplayedOffset(-5) < -5, "always strictly below the current offset");
+    } finally {
+      store.data.progress = saved;
+      sessionAnswers.clear(); savedSession.forEach((w) => sessionAnswers.add(w));
+    }
+  });
+  test("nextUnplayedOffset: returns the immediately-previous offset when nothing finished", () => {
+    const saved = store.data.progress;
+    const savedSession = new Set(sessionAnswers);
+    try {
+      store.data.progress = {};
+      sessionAnswers.clear();
+      eq(nextUnplayedOffset(-5), -6);
     } finally {
       store.data.progress = saved;
       sessionAnswers.clear(); savedSession.forEach((w) => sessionAnswers.add(w));
@@ -176,15 +191,49 @@
     try {
       store.data.progress = {};
       sessionAnswers.clear();
-      // Pretend the very next offset's word was already solved this session.
-      sessionAnswers.add(extraPuzzle(6));
-      const off = nextUnplayedOffset(5);
-      ok(off !== 6, "should not hand back offset 6 (its word is played)");
+      // Pretend the immediately-previous offset's word was already solved this session.
+      sessionAnswers.add(extraPuzzle(-6));
+      const off = nextUnplayedOffset(-5);
+      ok(off !== -6, "should not hand back offset -6 (its word is played)");
       ok(!sessionAnswers.has(extraPuzzle(off)), "chosen word is unplayed this session");
     } finally {
       store.data.progress = saved;
       sessionAnswers.clear(); savedSession.forEach((w) => sessionAnswers.add(w));
     }
+  });
+
+  // ---- prune forward-walk artifacts (migration off the old forward walk) --
+  test("prune: drops finished puzzles saved under future day indices", () => {
+    const today = dayIndexToday();
+    const p = {
+      [today + 1]: { finished: true, startedAt: 1 },
+      [today + 5]: { finished: true, startedAt: 1 },
+    };
+    pruneForwardWalkArtifacts(p);
+    eq(Object.keys(p).length, 0, "all future-index artifacts removed");
+  });
+  test("prune: drops today's entry if it was finished before today began", () => {
+    const today = dayIndexToday();
+    const beforeMidnight = new Date(); beforeMidnight.setHours(0, 0, 0, 0);
+    const p = { [today]: { finished: true, startedAt: beforeMidnight.getTime() - 1000 } };
+    pruneForwardWalkArtifacts(p);
+    ok(!(today in p), "stale today-artifact from a prior forward-walk is removed");
+  });
+  test("prune: keeps today's entry when genuinely played today", () => {
+    const today = dayIndexToday();
+    const afterMidnight = new Date(); afterMidnight.setHours(0, 0, 0, 0);
+    const p = { [today]: { finished: true, startedAt: afterMidnight.getTime() + 60000 } };
+    pruneForwardWalkArtifacts(p);
+    ok(today in p, "a board actually started today is preserved");
+  });
+  test("prune: never touches past-day puzzles (legit extra rounds)", () => {
+    const today = dayIndexToday();
+    const p = {
+      [today - 1]: { finished: true, startedAt: 1 },
+      [today - 30]: { finished: true, startedAt: 1 },
+    };
+    pruneForwardWalkArtifacts(p);
+    eq(Object.keys(p).length, 2, "past-day history is left intact");
   });
 
   // ---- CONFIG seam: tunables consolidated & sane -------------------------

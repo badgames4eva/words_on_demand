@@ -83,7 +83,7 @@ const load = (f) => fs.readFileSync(path.join(DIR, f), "utf8");
 const exposer = `
   globalThis.WOD_UNDER_TEST = {
     scoreGuess, puzzleForDay, dayIndexToday, extraPuzzle,
-    nextUnplayedOffset, formatDuration, formatStartedAt,
+    nextUnplayedOffset, pruneForwardWalkArtifacts, formatDuration, formatStartedAt,
     ANSWERS, VALID_GUESSES, store, puzzleIndex, DENYLIST,
     sessionAnswers, CONFIG,
     game, knownGreens, resetCurrentRow, nextEditableCol,

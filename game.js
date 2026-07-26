@@ -45,10 +45,35 @@ function loadStore() {
     if (raw) {
       const d = JSON.parse(raw);
       if (!d.progress) d.progress = {}; // per-puzzle saved board (guesses + result)
+      pruneForwardWalkArtifacts(d.progress);
       return d;
     }
   } catch (e) { /* fall through to defaults */ }
   return { streak: 0, played: 0, wins: 0, lastDay: null, progress: {} };
+}
+
+// One-more-round used to walk FORWARD, saving finished puzzles under future day
+// indices. When such a day arrived, its daily puzzle opened already-finished and
+// dumped the player onto the result screen. Extra rounds now walk backward, but
+// existing saves may still hold those artifacts — clean them on load:
+//   • any index in the future can only be a forward-walk artifact (a daily can
+//     never be reached ahead of its day) -> always drop it.
+//   • today's index is an artifact only if it was finished BEFORE today began
+//     (its startedAt predates local midnight); a genuinely-played-today board
+//     keeps its fresh timestamp and is preserved.
+function pruneForwardWalkArtifacts(progress) {
+  const today = dayIndexToday();
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const midnightMs = midnight.getTime();
+  for (const key of Object.keys(progress)) {
+    const idx = Number(key);
+    if (idx > today) { delete progress[key]; continue; }
+    if (idx === today) {
+      const startedAt = progress[key] && progress[key].startedAt;
+      if (!startedAt || startedAt < midnightMs) delete progress[key];
+    }
+  }
 }
 
 // Absolute puzzle number for a given offset from today (also the store key).
@@ -982,19 +1007,24 @@ const nativeBridge = {
   },
 };
 
-// First offset after `fromOffset` that's a fresh puzzle: neither finished in a
-// past session nor already played this session (no repeated solution word). We
+// First fresh puzzle BELOW `fromOffset`: extra rounds walk BACKWARD into past
+// days, never forward. Walking forward would consume upcoming daily puzzles —
+// a word solved in a "one more round" gets saved under its absolute puzzle
+// number, so when that day arrives the daily puzzle opens already-finished and
+// dumps the player straight onto the result screen. Going backward keeps offset
+// 0 (today) and every future day pristine. Fresh = not finished in a past
+// session and not already played this session (no repeated solution word). We
 // scan a full pool's worth of offsets so every distinct word is considered
-// before giving up. Falls back to the very next offset if the whole pool is
-// exhausted (a replay beats a hang).
+// before giving up; fall back to the very next offset down if all are exhausted
+// (a replay beats a hang).
 function nextUnplayedOffset(fromOffset) {
   const span = ANSWERS.length;
-  for (let off = fromOffset + 1; off <= fromOffset + span; off++) {
+  for (let off = fromOffset - 1; off >= fromOffset - span; off--) {
     if (store.data.progress[puzzleIndex(off)]?.finished) continue;
     if (sessionAnswers.has(extraPuzzle(off))) continue;
     return off;
   }
-  return fromOffset + 1;
+  return fromOffset - 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -1004,7 +1034,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v18 (hints: random unknown letter, one per row, disabled on last letter)");
+  console.log("Words on Demand — build v19 (one-more-round walks backward; prune forward-walk artifacts so today's daily is never pre-finished)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -1013,7 +1043,8 @@ if (typeof document !== "undefined" && document.getElementById("btn-play")) {
 
 // Expose internals to the test harness (Node) without affecting the browser.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { scoreGuess, nextUnplayedOffset, formatDuration, formatStartedAt, CONFIG,
+  module.exports = { scoreGuess, nextUnplayedOffset, pruneForwardWalkArtifacts,
+    formatDuration, formatStartedAt, CONFIG,
     getSessionAnswers: () => sessionAnswers,
     game, knownGreens, resetCurrentRow, nextEditableCol,
     typeLetter, removeLetter, currentGuess, wipeCurrentRow,
