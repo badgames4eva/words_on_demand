@@ -217,9 +217,37 @@ function focusFirstInEl(el) {
 }
 function focusFirstIn(screenId) { focusFirstInEl(document.getElementById(screenId)); }
 
+// Horizontal wrap within a keyboard row: given the focused key's value and a
+// direction, return the key Left/Right should land on, wrapping at the ends so
+// the row is a loop (P⇄Q, L⇄A, ENTER⇄Z). Returns null when `key` isn't one of
+// the keyboard keys, so the caller falls back to geometric navigation. Pure
+// over KB_LAYOUT, so it's unit-tested without a DOM.
+function nextKeyInRow(key, dir) {
+  for (const rowKeys of KB_LAYOUT) {
+    const i = rowKeys.indexOf(key);
+    if (i === -1) continue;
+    const n = rowKeys.length;
+    const j = dir === "right" ? (i + 1) % n : (i - 1 + n) % n;
+    return rowKeys[j];
+  }
+  return null;
+}
+
 function moveFocus(dir) {
   const items = focusablesInEl(focusRoot());
   if (!focusedEl || items.length === 0) { focusFirstInEl(focusRoot()); return; }
+
+  // On the on-screen keyboard, Left/Right loop within the row so no key dead-ends
+  // at a row edge — fewer D-pad presses to cross the board, and the remote's
+  // left/right always does something predictable.
+  if ((dir === "left" || dir === "right") &&
+      focusedEl.dataset && focusedEl.dataset.navGroup === "keyboard") {
+    const target = nextKeyInRow(focusedEl.dataset.key, dir);
+    if (target != null) {
+      const el = items.find((e) => e.dataset && e.dataset.key === target);
+      if (el) { setFocus(el); return; }
+    }
+  }
 
   const cur = focusedEl.getBoundingClientRect();
   const curX = cur.left + cur.width / 2;
@@ -303,11 +331,19 @@ document.addEventListener("keydown", (e) => {
     case "ArrowLeft":  inputMode = "dpad"; moveFocus("left");  e.preventDefault(); break;
     case "ArrowRight": inputMode = "dpad"; moveFocus("right"); e.preventDefault(); break;
     case "Enter":
-    // Remote's Play / Play-Pause button acts as OK / Select.
+      // OK / center-select: activate whatever key is focused (type a letter,
+      // press ENTER/DEL). In desktop keyboard-typing mode, Enter submits.
+      if (activeScreen === "game" && inputMode === "keyboard") onKeyPress("ENTER");
+      else activateFocused();
+      e.preventDefault();
+      break;
+    // Remote's Play / Play-Pause button is a dedicated SUBMIT shortcut while
+    // solving — press it from anywhere on the board to enter the current guess,
+    // no need to D-pad over to the ENTER key first (fewer clicks). Off the game
+    // screen it falls back to acting as OK / Select.
     case "MediaPlay":
     case "MediaPlayPause":
-      // Keyboard-typing mode in the game: Enter submits the guess.
-      if (activeScreen === "game" && inputMode === "keyboard") onKeyPress("ENTER");
+      if (activeScreen === "game" && !game.finished) submitGuess();
       else activateFocused();
       e.preventDefault();
       break;
@@ -397,8 +433,12 @@ function buildKeyboard() {
         (k === "ENTER" ? " key-enter" : "") + (k === "DEL" ? " key-del" : "");
       key.dataset.navGroup = "keyboard";
       key.dataset.key = k;
-      key.textContent = k === "DEL" ? "⌫" : k === "ENTER" ? "→" : k;
-      if (k === "ENTER") key.setAttribute("aria-label", "Enter");
+      // ENTER/DEL are the two actions bound to remote media keys, so label them
+      // with the matching remote glyphs: ENTER = the Play button (▶), DEL = the
+      // Rewind button (⏪). This teaches the mapping at a glance from the couch.
+      key.textContent = k === "DEL" ? "⏪" : k === "ENTER" ? "▶" : k;
+      if (k === "ENTER") key.setAttribute("aria-label", "Enter (remote Play)");
+      if (k === "DEL") key.setAttribute("aria-label", "Delete (remote Rewind)");
       key.addEventListener("click", () => onKeyPress(k));
       row.appendChild(key);
     }
@@ -1034,7 +1074,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v19 (one-more-round walks backward; prune forward-walk artifacts so today's daily is never pre-finished)");
+  console.log("Words on Demand — build v20 (keyboard: row-wrap L/R, Play=submit shortcut, ENTER=▶ / DEL=⏪ remote glyphs)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -1049,7 +1089,7 @@ if (typeof module !== "undefined" && module.exports) {
     game, knownGreens, resetCurrentRow, nextEditableCol,
     typeLetter, removeLetter, currentGuess, wipeCurrentRow,
     rewindPress, rewindRelease,
-    unrevealedColumns, hintAvailable,
+    unrevealedColumns, hintAvailable, nextKeyInRow,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };
 }

@@ -42,7 +42,7 @@
         removeLetter = G.removeLetter, currentGuess = G.currentGuess,
         wipeCurrentRow = G.wipeCurrentRow, rewindPress = G.rewindPress,
         rewindRelease = G.rewindRelease, unrevealedColumns = G.unrevealedColumns,
-        hintAvailable = G.hintAvailable;
+        hintAvailable = G.hintAvailable, nextKeyInRow = G.nextKeyInRow;
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
         getActiveScreen = G.getActiveScreen;
@@ -396,6 +396,32 @@
       game.finished = true;
       ok(!hintAvailable(), "no hint after the round ends");
     });
+  });
+
+  // ---- keyboard row-wrap navigation (fewer D-pad presses on a remote) -----
+  // Left/Right loop within each keyboard row. nextKeyInRow is pure over the
+  // layout, so it's tested without a DOM.
+  test("kb-wrap: Right from P wraps to Q; Left from Q wraps to P", () => {
+    eq(nextKeyInRow("P", "right"), "Q", "end of row 1 wraps to its start");
+    eq(nextKeyInRow("Q", "left"), "P", "start of row 1 wraps to its end");
+  });
+  test("kb-wrap: Right from L wraps to A; Left from A wraps to L", () => {
+    eq(nextKeyInRow("L", "right"), "A", "end of row 2 wraps to its start");
+    eq(nextKeyInRow("A", "left"), "L", "start of row 2 wraps to its end");
+  });
+  test("kb-wrap: Right from ENTER wraps to Z; Left from Z wraps to ENTER", () => {
+    // Row 3 is Z X C V B N M DEL ENTER — ENTER is the last key, Z the first.
+    eq(nextKeyInRow("ENTER", "right"), "Z", "last key wraps to first");
+    eq(nextKeyInRow("Z", "left"), "ENTER", "first key wraps to last");
+  });
+  test("kb-wrap: mid-row steps are ordinary neighbors (no wrap)", () => {
+    eq(nextKeyInRow("A", "right"), "S");
+    eq(nextKeyInRow("S", "left"), "A");
+    eq(nextKeyInRow("DEL", "right"), "ENTER", "DEL -> ENTER within row 3");
+  });
+  test("kb-wrap: a non-keyboard key returns null (falls back to geometry)", () => {
+    eq(nextKeyInRow("nope", "right"), null);
+    eq(nextKeyInRow(undefined, "left"), null);
   });
 
   // ---- native BACK contract ----------------------------------------------

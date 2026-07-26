@@ -43,11 +43,16 @@ the actual page.
 | Remote        | Keyboard (desktop) | Action                                        |
 |---------------|--------------------|-----------------------------------------------|
 | D-pad         | Arrow keys         | Move focus                                    |
-| OK / Select   | Enter              | Activate focused element                      |
-| Play          | (MediaPlay)        | Same as OK / Select                           |
+| OK / Select   | Enter              | Activate focused element (type a letter, press the on-screen ▶/⏪ keys) |
+| Play          | (MediaPlay)        | Submit the current guess (shortcut — no need to reach the ▶ key). Off the board: same as OK |
 | Rewind        | (MediaRewind)      | Delete: tap = one letter, hold = wipe the row (incl. carried-down greens) |
 | Back          | Backspace / Esc    | Close dialog, delete letter, or go home       |
 | —             | A–Z keys           | Type directly (testing only)                  |
+
+On the on-screen keyboard, **Left/Right wrap within a row** (P⇄Q, L⇄A, ENTER⇄Z)
+so the D-pad never dead-ends at a row edge. The ENTER key shows the remote's
+**Play** glyph (▶) and DEL shows the **Rewind** glyph (⏪), matching the physical
+buttons bound to those actions.
 
 ### Native BACK contract (Fire OS / Vega wrapper)
 
