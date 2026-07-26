@@ -195,8 +195,8 @@ body {
   cursor: pointer;
 }
 .key.key-wide { min-width: 6rem; font-size: 1.1rem; }
-/* ENTER shows the remote's Play glyph (▶) — pressing the physical Play button
-   submits the guess. Accented as the primary action. */
+/* ENTER shows the remote's Play/pause glyph (⏯) — pressing the physical
+   Play/pause button submits the guess. Accented as the primary action. */
 .key.key-enter { background: var(--accent); font-size: 1.5rem; }
 /* DEL shows the remote's Rewind glyph (⏪) — its own warm-red so it reads as
    "remove/erase", distinct from the blue ENTER and the neutral letter keys. */

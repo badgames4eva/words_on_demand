@@ -434,10 +434,11 @@ function buildKeyboard() {
       key.dataset.navGroup = "keyboard";
       key.dataset.key = k;
       // ENTER/DEL are the two actions bound to remote media keys, so label them
-      // with the matching remote glyphs: ENTER = the Play button (▶), DEL = the
-      // Rewind button (⏪). This teaches the mapping at a glance from the couch.
-      key.textContent = k === "DEL" ? "⏪" : k === "ENTER" ? "▶" : k;
-      if (k === "ENTER") key.setAttribute("aria-label", "Enter (remote Play)");
+      // with the matching remote glyphs: ENTER = the Play/pause button (⏯), DEL =
+      // the Rewind button (⏪) — same icons as the physical Fire TV remote. This
+      // teaches the mapping at a glance from the couch.
+      key.textContent = k === "DEL" ? "⏪" : k === "ENTER" ? "⏯" : k;
+      if (k === "ENTER") key.setAttribute("aria-label", "Enter (remote Play/Pause)");
       if (k === "DEL") key.setAttribute("aria-label", "Delete (remote Rewind)");
       key.addEventListener("click", () => onKeyPress(k));
       row.appendChild(key);
@@ -1074,7 +1075,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v20 (keyboard: row-wrap L/R, Play=submit shortcut, ENTER=▶ / DEL=⏪ remote glyphs)");
+  console.log("Words on Demand — build v21 (ENTER glyph = Play/pause ⏯ to match the Fire TV remote)");
   wire();
   renderHomeStats();
   showScreen("home");
