@@ -21,6 +21,10 @@
 
   --focus-ring: #ffd34d;
   --del: #c65b5b;
+  /* ENTER key green. Deliberately shifted toward teal, well away from
+     --correct (#4caf7d): the letter keys turn --correct when scored, so a
+     nearby green here would read as "a correct letter" instead of "submit". */
+  --enter: #00674F;
 
   /* 10-foot scale: sizes are deliberately large, but clamp to viewport height so
      the board + keyboard + hint always fit. On a full-screen 16:9 TV the height is
@@ -208,8 +212,9 @@ body {
 }
 .key.key-wide { min-width: clamp(6rem, 9vw, 9rem); font-size: 1.1rem; }
 /* ENTER shows the remote's Play/pause glyph — pressing the physical
-   Play/pause button submits the guess. Accented as the primary action. */
-.key.key-enter { background: var(--accent); }
+   Play/pause button submits the guess. Green for "go/submit", in the teal-shifted
+   --enter hue so it never reads as a scored (--correct) letter key. */
+.key.key-enter { background: var(--enter); }
 /* DEL shows the remote's Rewind glyph — its own warm-red so it reads as
    "remove/erase", distinct from the blue ENTER and the neutral letter keys. */
 .key.key-del { background: var(--del); }

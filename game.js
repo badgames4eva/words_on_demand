@@ -1336,7 +1336,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v36 (Erase/Enter key faces are inline SVG, not platform emoji)");
+  console.log("Words on Demand — build v37 (ENTER key green, teal-shifted so it can't read as a scored letter)");
   wire();
   renderHomeStats();
   showScreen("home");
