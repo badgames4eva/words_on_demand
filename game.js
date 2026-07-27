@@ -832,7 +832,7 @@ function hintDisabledReason() {
 // returns next row). Stays focusable so D-pad focus never strands.
 const HINT_COPY = {
   available: { text: "Reveal a Letter", badge: "Watch Ad" },
-  used:      { text: "Hint used", badge: "Next row" },
+  used:      { text: "Next hint after your next guess", badge: "" },
   last:      { text: "Just one letter left!", badge: "" },
   finished:  { text: "Reveal a Letter", badge: "" },
 };
@@ -851,7 +851,7 @@ function refreshHintButton() {
   if (badgeEl) { badgeEl.textContent = copy.badge; badgeEl.hidden = !copy.badge; }
 
   btn.setAttribute("aria-label",
-    reason === "used" ? "Hint already used this row — another is available on your next guess"
+    reason === "used" ? "Your next hint unlocks after your next guess"
     : reason === "last" ? "No hint — only one letter left to find"
     : "Reveal a letter — watch an ad");
 }
@@ -1143,7 +1143,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v28 (disabled hint explains why: 'Hint used / Next row')");
+  console.log("Words on Demand — build v29 (spent-hint copy: 'Next hint after your next guess')");
   wire();
   renderHomeStats();
   showScreen("home");
