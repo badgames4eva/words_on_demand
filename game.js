@@ -1318,7 +1318,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v34 (unit tests for D-pad geometric navigation)");
+  console.log("Words on Demand — build v35 (custom domain wordsondemand.badgames4eva.com pinned via CNAME)");
   wire();
   renderHomeStats();
   showScreen("home");
