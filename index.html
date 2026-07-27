@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=23" />
+  <link rel="stylesheet" href="styles.css?v=24" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -56,8 +56,11 @@
     <div class="keyboard" id="keyboard" aria-label="On-screen keyboard"></div>
 
     <p class="hint-bar">
-      <button class="btn btn-ghost focusable" data-nav-group="game-extra" id="btn-hint">
-        💡 Reveal a Letter ▶ Ad
+      <button class="btn btn-hint focusable" data-nav-group="game-extra" id="btn-hint"
+              aria-label="Reveal a letter — watch an ad">
+        <span class="hint-icon" aria-hidden="true">💡</span>
+        <span class="hint-text">Reveal a Letter</span>
+        <span class="hint-badge">Watch Ad</span>
       </button>
     </p>
   </section>
@@ -136,9 +139,9 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v23</div>
+  <div id="build-badge">build v24</div>
 
-  <script src="words.js?v=23"></script>
-  <script src="game.js?v=23"></script>
+  <script src="words.js?v=24"></script>
+  <script src="game.js?v=24"></script>
 </body>
 </html>

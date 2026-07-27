@@ -211,6 +211,25 @@ body {
 .key.absent  { background: var(--absent); opacity: .55; }
 
 .hint-bar { margin: 0; }
+/* The hint is a real, tappable control — give it a solid filled surface and a
+   clear border so it reads as a button (the old transparent ghost style looked
+   like plain text). The "Watch Ad" pill spells out the cost up front. */
+.btn.btn-hint {
+  display: inline-flex; align-items: center; gap: .7rem;
+  background: var(--panel);
+  border: 3px solid var(--accent);
+  padding: .85rem 1.6rem;
+  font-size: 1.4rem;
+}
+.hint-icon { font-size: 1.5rem; }
+.hint-badge {
+  font-size: 1rem; font-weight: 700; letter-spacing: .03em;
+  background: var(--accent); color: var(--bg);
+  padding: .25rem .7rem; border-radius: 999px; white-space: nowrap;
+}
+/* When spent for the row / only one letter left, .is-disabled dims the whole
+   button (see .btn.is-disabled); mute the badge so it doesn't stay loud. */
+.btn.btn-hint.is-disabled .hint-badge { background: var(--muted); }
 
 /* ============================ RESULT ============================ */
 .result-inner { text-align: center; max-width: 800px; }
