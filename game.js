@@ -433,13 +433,21 @@ function buildKeyboard() {
         (k === "ENTER" ? " key-enter" : "") + (k === "DEL" ? " key-del" : "");
       key.dataset.navGroup = "keyboard";
       key.dataset.key = k;
-      // ENTER/DEL are the two actions bound to remote media keys, so label them
-      // with the matching remote glyphs: ENTER = the Play/pause button (⏯), DEL =
-      // the Rewind button (⏪) — same icons as the physical Fire TV remote. This
-      // teaches the mapping at a glance from the couch.
-      key.textContent = k === "DEL" ? "⏪" : k === "ENTER" ? "⏯" : k;
-      if (k === "ENTER") key.setAttribute("aria-label", "Enter (remote Play/Pause)");
-      if (k === "DEL") key.setAttribute("aria-label", "Delete (remote Rewind)");
+      // ENTER/DEL are the two actions bound to remote media keys. Show the
+      // matching remote glyph (ENTER = Play/pause ⏯, DEL = Rewind ⏪, same icons
+      // as the physical Fire TV remote) AND a word caption underneath, so the
+      // glyph teaches the remote mapping while the text removes any doubt about
+      // what the button does. Letter keys stay plain text.
+      if (k === "DEL" || k === "ENTER") {
+        const glyph = k === "DEL" ? "⏪" : "⏯";
+        const caption = k === "DEL" ? "Erase" : "Enter";
+        key.innerHTML =
+          `<span class="key-glyph">${glyph}</span><span class="key-caption">${caption}</span>`;
+        key.setAttribute("aria-label",
+          k === "DEL" ? "Erase (remote Rewind)" : "Enter (remote Play/Pause)");
+      } else {
+        key.textContent = k;
+      }
       key.addEventListener("click", () => onKeyPress(k));
       row.appendChild(key);
     }
@@ -1075,7 +1083,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v21 (ENTER glyph = Play/pause ⏯ to match the Fire TV remote)");
+  console.log("Words on Demand — build v23 (ENTER/DEL keys: remote glyph + word caption 'Enter'/'Erase')");
   wire();
   renderHomeStats();
   showScreen("home");

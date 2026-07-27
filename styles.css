@@ -197,10 +197,15 @@ body {
 .key.key-wide { min-width: 6rem; font-size: 1.1rem; }
 /* ENTER shows the remote's Play/pause glyph (⏯) — pressing the physical
    Play/pause button submits the guess. Accented as the primary action. */
-.key.key-enter { background: var(--accent); font-size: 1.5rem; }
+.key.key-enter { background: var(--accent); }
 /* DEL shows the remote's Rewind glyph (⏪) — its own warm-red so it reads as
    "remove/erase", distinct from the blue ENTER and the neutral letter keys. */
-.key.key-del { background: var(--del); font-size: 1.3rem; }
+.key.key-del { background: var(--del); }
+/* ENTER/DEL stack a remote glyph over a word caption ("Enter" / "Erase") so the
+   action is unmistakable at 10 feet. flex-column centers the two lines. */
+.key.key-enter, .key.key-del { flex-direction: column; gap: .1rem; line-height: 1; }
+.key-glyph { font-size: 1.4rem; }
+.key-caption { font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: none; }
 .key.correct { background: var(--correct); }
 .key.present { background: var(--present); }
 .key.absent  { background: var(--absent); opacity: .55; }
