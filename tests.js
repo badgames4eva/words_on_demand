@@ -260,6 +260,10 @@
     eq(CONFIG.vastTags.interstitial, null, "no live interstitial tag by default");
     eq(CONFIG.vastTags.rewarded, null, "no live rewarded tag by default");
     ok(CONFIG.adLoadTimeoutMs > 0, "ad-load timeout is a positive backstop");
+    // The D-pad escape must arm LATER than a normal creative runs, so it rescues
+    // a frozen ad without being an early-skip on a legit non-skippable one.
+    ok(CONFIG.adEscapeAfterMs > CONFIG.adSeconds.interstitial * 1000,
+      "escape hatch reveals after a normal ad would have finished");
   });
 
   // ---- carry-down greens: don't make the player re-type known letters ----

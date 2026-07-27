@@ -45,8 +45,24 @@ These are hard requirements, not preferences — they come from the platform, no
 - **Ads only at natural break points** — full-screen interstitial *between* rounds,
   never mid-solve. Churns players otherwise.
 - **Rewarded video is opt-in** — the "reveal a letter" hint is the rewarded-ad seam.
-- `playAd()` is a placeholder. Swap in the real SDK per platform (APS for Fire TV,
-  AdMob/IMA for Android TV) at that seam, keeping the between-rounds-only placement.
+- `playAd()` is the single ad integration seam. It now drives the **Google IMA
+  HTML5 SDK** (serving VAST) when a tag is set in `CONFIG.vastTags` and the SDK is
+  loaded, and falls back to a placeholder countdown otherwise (browser demo,
+  offline, tests). To go live, paste Google Ad Manager VAST tag URLs into
+  `CONFIG.vastTags` — no code change. Back it with **Google Ad Manager** (NOT
+  AdMob — AdMob has no CTV/TV form-factor support and running it on TV apps risks
+  account bans). Add **Amazon APS** later as Fire-TV-specific demand.
+- **Serve only non-skippable / auto-completing creatives at launch.** The IMA
+  HTML5 SDK has no documented Connected-TV/D-pad support — its own skip and
+  click-through controls may be unreachable by a remote. Non-skippable creatives
+  sidestep this (there's no skip button to reach). This is a Google Ad Manager
+  creative-targeting setting, not code. If skippable/rewarded ads with proper
+  remote-driven skip become worthwhile, that's the trigger to move ads to the
+  **native** Android IMA SDK in the WebView wrapper (its Android TV guide handles
+  D-pad skip focus automatically) — a wrapper-side change, not a change here.
+- **Ad screen has a D-pad escape hatch** (`#btn-ad-continue`, `CONFIG.adEscapeAfterMs`):
+  if an ad overruns/freezes, a remote-focusable "Continue" button appears and
+  resumes play, so a remote-only player is never trapped by unreachable ad UI.
 - **CTV economics are the whole case:** full-screen video CPMs $25–65 w/ 96–98%
   completion vs. mobile's $5–15 — roughly 3–5× per impression.
 

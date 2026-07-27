@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=31" />
+  <link rel="stylesheet" href="styles.css?v=32" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -104,6 +104,10 @@
         <div class="ad-progress"><div class="ad-progress-bar" id="ad-bar"></div></div>
       </div>
       <p class="ad-skip" id="ad-skip">Continues in <span id="ad-count">5</span>…</p>
+      <!-- D-pad safety net: hidden while an ad plays, revealed only if the ad
+           runs long/freezes (the HTML5 IMA SDK's own controls may not be
+           reachable by a remote). Pressing it resumes play. -->
+      <button class="btn btn-primary focusable" data-nav-group="ad" id="btn-ad-continue" hidden>Continue</button>
     </div>
   </section>
 
@@ -150,7 +154,7 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v31</div>
+  <div id="build-badge">build v32</div>
 
   <!-- Google IMA HTML5 SDK — serves real VAST video ads inside the WebView on
        Fire TV / Android TV. Loads async and is OPTIONAL: game.js falls back to
@@ -158,7 +162,7 @@
        VAST tag is set in CONFIG.vastTags. Left off the ?v= cache-bust since
        it's an external, Google-versioned asset. -->
   <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js" async></script>
-  <script src="words.js?v=31"></script>
-  <script src="game.js?v=31"></script>
+  <script src="words.js?v=32"></script>
+  <script src="game.js?v=32"></script>
 </body>
 </html>

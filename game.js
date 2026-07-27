@@ -40,6 +40,13 @@ const CONFIG = {
   // Hard ceiling on how long we wait for the SDK to start an ad before giving
   // up and resuming play. An ad must never strand the player.
   adLoadTimeoutMs: 8000,
+  // D-pad safety net. The IMA HTML5 SDK has no documented TV/remote support, so
+  // its own ad UI (skip, click-through) may be UNREACHABLE by a D-pad. We serve
+  // only non-skippable creatives (they auto-complete), but if an ad freezes
+  // mid-play a player must never be trapped. After this long on the ad screen we
+  // reveal a remote-focusable "Continue" button that resumes play. Set well
+  // above a normal creative's length so it can't be used to skip a legit ad.
+  adEscapeAfterMs: 32000,
   // Placeholder seam for Phase 4 remote word lists (ship new dailies without an
   // app update). null = use the built-in ANSWERS pool.
   wordListUrl: null,
@@ -799,16 +806,19 @@ function playAd(seconds, onDone, placement) {
   adPlaying = true;
 
   // Wrap onDone so it can only ever resume gameplay once, and always releases
-  // the one-ad-at-a-time latch. Every terminal branch below calls resume().
+  // the one-ad-at-a-time latch AND tears down the escape button. Every terminal
+  // branch below (ad done, error, timeout, D-pad escape) calls resume().
   let resumed = false;
   const resume = () => {
     if (resumed) return;
     resumed = true;
     adPlaying = false;
+    hideAdEscape();
     onDone();
   };
 
   showScreen("ad");
+  armAdEscape(resume); // D-pad safety net in case an ad's own controls can't be reached
 
   const vastTag = CONFIG.vastTags && placement ? CONFIG.vastTags[placement] : null;
   if (vastTag && imaAvailable()) {
@@ -816,6 +826,32 @@ function playAd(seconds, onDone, placement) {
   } else {
     playPlaceholderAd(seconds, resume);
   }
+}
+
+// The ad screen's D-pad escape hatch. Hidden while an ad plays; after
+// CONFIG.adEscapeAfterMs it appears, takes focus, and a press resumes play via
+// the SAME resume() as every other terminal path — so a frozen/unreachable ad
+// can never trap a remote-only player. Kept deliberately slow to reveal so it
+// isn't an early-skip button on a legit non-skippable creative.
+let adEscapeTimer = null;
+function armAdEscape(resume) {
+  const btn = document.getElementById("btn-ad-continue");
+  if (!btn) return;
+  btn.hidden = true;
+  btn.onclick = resume;
+  if (adEscapeTimer) { clearTimeout(adEscapeTimer); adEscapeTimer = null; }
+  const delay = (CONFIG.adEscapeAfterMs > 0) ? CONFIG.adEscapeAfterMs : 32000;
+  adEscapeTimer = setTimeout(() => {
+    // Only surface it if we're still on the ad screen (ad hasn't already ended).
+    if (getActiveScreen() !== "ad") return;
+    btn.hidden = false;
+    setFocus(btn);
+  }, delay);
+}
+function hideAdEscape() {
+  if (adEscapeTimer) { clearTimeout(adEscapeTimer); adEscapeTimer = null; }
+  const btn = document.getElementById("btn-ad-continue");
+  if (btn) { btn.hidden = true; btn.onclick = null; }
 }
 
 // Is the Google IMA HTML5 SDK loaded? (index.html loads it from Google's CDN;
@@ -1265,7 +1301,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v31 (real ads: Google IMA VAST via playAd seam, placeholder fallback)");
+  console.log("Words on Demand — build v32 (ad screen: D-pad Continue escape hatch for unreachable ad controls)");
   wire();
   renderHomeStats();
   showScreen("home");

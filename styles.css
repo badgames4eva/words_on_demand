@@ -26,7 +26,7 @@
      the board + keyboard + hint always fit. On a full-screen 16:9 TV the height is
      the binding dimension, so grow tiles off vh to fill the vertical space; the
      floor keeps laptop/browser windows (short viewports) looking as before. */
-  --tile: clamp(2.6rem, 8.8vh, 6.4rem);
+  --tile: clamp(2.6rem, 7.2vh, 5.4rem);
   --radius: 14px;
 }
 
@@ -199,7 +199,7 @@ body {
 .key {
   /* Width grows with the viewport so the 10-key top row fills the screen instead
      of leaving big side gutters on a wide TV; the floor keeps narrow windows tidy. */
-  min-width: clamp(3.4rem, 6.2vw, 6rem); height: clamp(2.8rem, 8vh, 5rem);
+  min-width: clamp(3.4rem, 6.2vw, 6rem); height: clamp(2.8rem, 6vh, 4.2rem);
   display: flex; align-items: center; justify-content: center;
   font-size: clamp(1.4rem, 2vw, 2rem); font-weight: 700; text-transform: uppercase;
   background: var(--panel); color: var(--text);
@@ -274,6 +274,9 @@ body {
 .ad-progress { position: absolute; bottom: 0; left: 0; right: 0; height: 8px; background: #222; }
 .ad-progress-bar { height: 100%; width: 0%; background: var(--accent); transition: width .1s linear; }
 .ad-skip { margin-top: 1.5rem; font-size: 1.3rem; color: var(--muted); }
+/* D-pad escape hatch — only shown if an ad overruns/freezes. */
+#btn-ad-continue { margin-top: 1.5rem; }
+#btn-ad-continue[hidden] { display: none; }
 
 /* ============================ HOW TO ============================ */
 .howto-inner { max-width: 800px; }
