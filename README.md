@@ -21,8 +21,14 @@ ads declaration, content rating) are in [STORE_COMPLIANCE.md](STORE_COMPLIANCE.m
 
 In-app, the policy is summarized on the **How to Play & About** screen (the `#howto`
 section) with the URL and support email as plain text — deliberately not links, since a
-remote can't follow one. If the policy changes, update that block too: three places
-(PRIVACY.md, privacy.html, index.html) plus the effective date.
+remote can't follow one.
+
+> **Changing the support email, publisher name, or policy wording?** They're literal
+> strings duplicated across four files (no build step to interpolate them). Follow
+> [*How to change the email, publisher name, or policy text*](STORE_COMPLIANCE.md#how-to-change-the-email-publisher-name-or-policy-text)
+> in STORE_COMPLIANCE.md — it has the one-line swap command, the trap to avoid
+> (`badgames4eva` is also in the domain), and what to verify. Editing `index.html` means
+> it's a release, so bump the version too.
 
 ## Run it
 

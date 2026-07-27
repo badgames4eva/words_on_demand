@@ -242,8 +242,96 @@ So: **ads are the only data-collection vector in this app**, and they are inert 
 personalized ads, **every section of this document and [PRIVACY.md](PRIVACY.md) has to be
 revisited before that build ships.**
 
+---
+
+## How to change the email, publisher name, or policy text
+
+The contact email and publisher name are **duplicated across four files** — there's no
+build step to interpolate them, so they're literal strings in each place. Miss one and the
+in-app text disagrees with the hosted policy, which is exactly what a store reviewer
+notices.
+
+### Where each value lives
+
+| Value | Files |
+|---|---|
+| Support / privacy email | [PRIVACY.md](PRIVACY.md), [privacy.html](privacy.html), [index.html](index.html), this file |
+| Publisher name | [PRIVACY.md](PRIVACY.md), [privacy.html](privacy.html), [index.html](index.html), this file |
+| Effective / Last updated date | [PRIVACY.md](PRIVACY.md), [privacy.html](privacy.html) |
+| Policy body text | [PRIVACY.md](PRIVACY.md) and [privacy.html](privacy.html) (full), [index.html](index.html) (short summary in the `#howto` About block) |
+
+Current values: **badgames4eva** / **badgameseva@gmail.com**
+
+Don't trust a memorized occurrence count — ask the repo, since these numbers drift as the
+docs grow:
+
+```bash
+grep -rc 'badgameseva@gmail.com' --include='*.md' --include='*.html' . | grep -v ':0'
+```
+
+### Changing the email or publisher name
+
+From the repo root — swap the old and new values, then verify:
+
+```bash
+OLD='badgameseva@gmail.com'; NEW='your-new@email.com'
+grep -rl "$OLD" --include='*.md' --include='*.html' . | xargs sed -i '' "s|$OLD|$NEW|g"
+grep -rn "$OLD" --include='*.md' --include='*.html' .   # must print NOTHING
+grep -rc "$NEW" --include='*.md' --include='*.html' .   # sanity-check the counts
+```
+
+Same pattern for the publisher name, but **don't** blanket-replace `badgames4eva` — it's
+also in the domain `wordsondemand.badgames4eva.com`, and a global swap would break every
+URL. Change those by hand (2 in PRIVACY.md, 2 in privacy.html, 1 in index.html, 1 here), or
+anchor the match so it can't hit the domain:
+
+```bash
+grep -rn 'badgames4eva' --include='*.md' --include='*.html' . | grep -v 'badgames4eva\.com'
+```
+
+After any swap, confirm the URLs survived — this must still find the domain in every file
+that had it:
+
+```bash
+grep -rc 'badgames4eva\.com' --include='*.md' --include='*.html' . | grep -v ':0'
+```
+
+Because [index.html](index.html) is a player-facing asset, an email/name change is a
+**release**: bump the version in all four places and redeploy (see the *Deploy* section of
+[README.md](README.md)). A change to PRIVACY.md / privacy.html / this file alone is
+docs-only and needs no bump — but it *does* still need a push, since the hosted policy page
+IS privacy.html.
+
+### Changing the policy text itself
+
+1. Edit [PRIVACY.md](PRIVACY.md) — treat it as the source of truth.
+2. Mirror the change into [privacy.html](privacy.html). They are intentionally separate
+   files (no build step), so this is manual. The HTML uses curly quotes and `&nbsp;`;
+   match the surrounding style.
+3. **Bump the "Last updated" date in both.** Leave "Effective date" alone unless the change
+   is material (new data collected, personalized ads, analytics added) — for those, set a
+   future effective date and ship the notice before the behavior changes.
+4. If the change affects the in-app summary (accounts, storage, ad personalization), update
+   the *About & Privacy* block in [index.html](index.html) too, and bump the build version.
+5. Re-check the answers in this document — a policy change usually means a Data Safety
+   change, and the two must agree.
+6. Push, then confirm <https://wordsondemand.badgames4eva.com/privacy> serves the new text.
+   Pages takes ~1–2 min.
+
+### Verify after any change
+
+```bash
+node run-tests.js                                     # 72/72
+grep -rn 'PUBLISHER_NAME\|CONTACT_EMAIL' . --include='*.md' --include='*.html'   # no placeholders left
+curl -s https://wordsondemand.badgames4eva.com/privacy | grep -c 'your-new@email.com'
+```
+
+Then open the **How to Play & About** screen in the app and read the block — it's the one
+copy of this text a player actually sees.
+
 ## When to revisit this document
 
+- Changing the contact email or publisher name → follow the procedure above; four files
 - Pasting real VAST tags into `CONFIG.vastTags` → nothing here changes (it already assumes
   ads are live), but verify `npa=1` is on the tag
 - Switching to **personalized** ads → rewrite the ads declaration, add consent (CMP/GDPR
@@ -252,3 +340,4 @@ revisited before that build ships.**
 - Adding accounts, cloud sync, or a leaderboard → personal data, a real deletion mechanism,
   and a substantially longer policy
 - Adding in-app purchases → content-rating and store-listing changes
+- Regenerating or expanding the `words.js` answer pool → re-run the content-rating check
