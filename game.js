@@ -298,10 +298,14 @@ function moveFocus(dir) {
     if (dir === "left" && dx >= -1) continue;
     if (dir === "right" && dx <= 1) continue;
 
-    // Primary axis distance dominates; perpendicular offset is penalized.
+    // Primary axis distance must dominate so the *nearest* row/column always wins:
+    // an aligned element two rows away must never beat an offset element one row
+    // away. (Keyboard rows have different key counts and are centered, so adjacent
+    // rows are misaligned by up to ~half a key — weighting `along` heavily keeps
+    // Down/Up from skipping the middle row toward a better-aligned far one.)
     const along = (dir === "up" || dir === "down") ? Math.abs(dy) : Math.abs(dx);
     const perp  = (dir === "up" || dir === "down") ? Math.abs(dx) : Math.abs(dy);
-    const score = along + perp * 2;
+    const score = along * 3 + perp;
 
     if (score < bestScore) { bestScore = score; best = el; }
   }
@@ -1301,7 +1305,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v32 (fit board+keyboard within TV height)");
+  console.log("Words on Demand — build v33 (D-pad: weight row distance so middle keyboard row is not skipped)");
   wire();
   renderHomeStats();
   showScreen("home");
