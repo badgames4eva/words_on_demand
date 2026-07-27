@@ -106,10 +106,11 @@ audit of what the code actually does.
 - [x] **Privacy policy** written and hosted: [PRIVACY.md](PRIVACY.md) (source) rendered at
       [privacy.html](privacy.html) → <https://wordsondemand.badgames4eva.com/privacy>.
       Paste that URL into both store listings.
-- [ ] **In-app privacy link** — still open. A URL isn't reachable from a TV remote, so the
-      plan is a short "Privacy" panel (like How to Play) that states the policy in-app and
-      shows the URL as text. Not a submission blocker (both stores take the listing URL);
-      do it before launch anyway.
+- [x] **In-app privacy disclosure** — the home button is now **"How to Play & About"**, and
+      that screen carries an *About & Privacy* block: a plain-language summary (no accounts,
+      device-only storage, non-personalized ads) plus the policy URL and support email as
+      readable text. Text, not a hyperlink, on purpose — a remote can't follow a link and
+      the WebView has no browser to hand off to.
 - [x] **COPPA/consent**: general-audience / 13+ declaration, **non-personalized ads only**
       (`&npa=1` on the VAST tags — see [ADS_SETUP.md](ADS_SETUP.md)), which also avoids a
       consent banner that would be painful to navigate with a D-pad. Audit confirms the app

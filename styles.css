@@ -288,15 +288,48 @@ body {
 #btn-ad-continue { margin-top: 1.5rem; }
 #btn-ad-continue[hidden] { display: none; }
 
-/* ============================ HOW TO ============================ */
-.howto-inner { max-width: 800px; }
-.howto-inner h2 { font-size: 3rem; margin-bottom: 1.5rem; }
-.howto-list { list-style: none; font-size: 1.5rem; line-height: 2.4; }
+/* ==================== HOW TO PLAY & ABOUT ==================== */
+/* This screen now carries the rules AND the About/Privacy block, so the
+   fixed-height sizes below are clamped against vh: everything must fit on one
+   screen without scrolling. There's only one focusable here ("Got it"), so a
+   scrollbar would be UNREACHABLE by remote — anything pushed off the bottom is
+   effectively gone. Keep it fitting rather than adding scroll. */
+.howto-inner { max-width: 860px; }
+.howto-inner h2 { font-size: clamp(1.9rem, 3.4vh, 3rem); margin-bottom: clamp(.5rem, 1.4vh, 1.5rem); }
+.howto-list {
+  list-style: none;
+  font-size: clamp(1.05rem, 1.9vh, 1.5rem);
+  line-height: clamp(1.6, 3.1vh, 2.4);
+}
 .swatch { display: inline-block; width: 1.4rem; height: 1.4rem; border-radius: 4px; vertical-align: middle; margin-right: .3rem; }
 .swatch.correct { background: var(--correct); }
 .swatch.present { background: var(--present); }
 .swatch.absent { background: var(--absent); }
-.howto-inner .btn { margin-top: 2rem; }
+.howto-inner .btn { margin-top: clamp(.8rem, 2vh, 2rem); }
+
+/* ---- About & Privacy (in the How to Play screen) ----
+   Where the store-required privacy disclosure lives in-app. Deliberately quieter
+   than the rules above (muted, smaller): a player came here to learn the game,
+   not to read a policy — but a reviewer and a curious player can both find it. */
+.about-head {
+  font-size: clamp(1.2rem, 2.2vh, 1.8rem); font-weight: 700;
+  margin: clamp(.9rem, 2.2vh, 2rem) 0 clamp(.3rem, .8vh, .7rem);
+  padding-top: clamp(.7rem, 1.8vh, 1.6rem);
+  border-top: 2px solid var(--absent);
+}
+.about-text {
+  font-size: clamp(.9rem, 1.6vh, 1.2rem);
+  line-height: 1.5; color: var(--muted);
+  margin-bottom: clamp(.3rem, .8vh, .7rem);
+}
+.about-text strong { color: var(--text); }
+/* The URL and email are read off the screen and typed on a phone — never
+   tapped. Monospace + letter-spacing so characters are unambiguous at 10 feet
+   (rn vs m, l vs 1), and nowrap so a URL never breaks across lines mid-domain. */
+.about-url .url, .about-contact .url {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--accent); letter-spacing: .02em; white-space: nowrap;
+}
 
 /* ============================ HISTORY ============================ */
 #history { justify-content: flex-start; padding-top: 6vh; }

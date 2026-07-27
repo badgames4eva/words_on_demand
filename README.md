@@ -19,6 +19,11 @@ stores require in the listing. Source of truth is [PRIVACY.md](PRIVACY.md); keep
 [privacy.html](privacy.html) in sync with it. Store questionnaire answers (Data Safety,
 ads declaration, content rating) are in [STORE_COMPLIANCE.md](STORE_COMPLIANCE.md).
 
+In-app, the policy is summarized on the **How to Play & About** screen (the `#howto`
+section) with the URL and support email as plain text — deliberately not links, since a
+remote can't follow one. If the policy changes, update that block too: three places
+(PRIVACY.md, privacy.html, index.html) plus the effective date.
+
 ## Run it
 
 No build step. Just open it in a browser:

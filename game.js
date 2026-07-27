@@ -1363,7 +1363,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v38 (load perf: deferred scripts, lazy IMA SDK)");
+  console.log("Words on Demand — build v39 (How to Play & About: in-app privacy disclosure)");
   wire();
   renderHomeStats();
   showScreen("home");

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=38" />
+  <link rel="stylesheet" href="styles.css?v=39" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -31,7 +31,7 @@
       <div class="home-actions">
         <button class="btn btn-primary focusable" data-nav-group="home" id="btn-play">Play Today's Puzzle</button>
         <button class="btn focusable" data-nav-group="home" id="btn-history">History</button>
-        <button class="btn focusable" data-nav-group="home" id="btn-howto">How to Play</button>
+        <button class="btn focusable" data-nav-group="home" id="btn-howto">How to Play &amp; About</button>
       </div>
       <p class="daily-note" id="daily-note"></p>
     </div>
@@ -121,7 +121,13 @@
     </div>
   </section>
 
-  <!-- ======================= HOW TO PLAY ======================= -->
+  <!-- ================= HOW TO PLAY & ABOUT =================
+       Keeps the id "howto" on purpose — showScreen("howto") and the native BACK
+       contract (handleBack) both key off it, and tests.js drives it by that id.
+       The About block is where the store-required privacy policy is surfaced
+       in-app. A remote can't follow a hyperlink and this WebView has no browser
+       to hand off to, so the policy is SUMMARIZED here and the URL is shown as
+       plain readable text for anyone who wants the full version on a phone. -->
   <section id="howto" class="screen">
     <div class="howto-inner">
       <h2>How to Play</h2>
@@ -133,6 +139,24 @@
         <li><span class="swatch absent"></span> Gray = not in the word.</li>
         <li>Green letters carry down to your next guess automatically — no need to retype them.</li>
       </ul>
+
+      <h3 class="about-head">About &amp; Privacy</h3>
+      <p class="about-text">
+        A new puzzle every day, free and ad-supported, by <strong>badgames4eva</strong>.
+      </p>
+      <p class="about-text">
+        <strong>Your privacy:</strong> we don't collect your name, email, or any account
+        info — this game has no accounts and no sign-in. Your streak and progress are
+        saved only on this device and never sent anywhere. Ads are
+        <strong>non-personalized</strong>: we don't build an advertising profile of you.
+      </p>
+      <p class="about-text about-url">
+        Full privacy policy: <span class="url">wordsondemand.badgames4eva.com/privacy</span>
+      </p>
+      <p class="about-text about-contact">
+        Questions? <span class="url">badgameseva@gmail.com</span>
+      </p>
+
       <button class="btn btn-primary focusable" data-nav-group="howto" id="btn-howto-back">Got it</button>
     </div>
   </section>
@@ -154,7 +178,7 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v38</div>
+  <div id="build-badge">build v39</div>
 
   <!-- The Google IMA HTML5 SDK (~488 KB) is NOT requested here on purpose. It's
        lazy-loaded by ensureImaSdk() in game.js on the first "Play", so it never
@@ -165,7 +189,7 @@
   <!-- defer: don't block HTML parsing. Both keep document order and run after
        the document is parsed, so game.js's bottom-of-body boot block still finds
        #btn-play and the DOM it wires. -->
-  <script src="words.js?v=38" defer></script>
-  <script src="game.js?v=38" defer></script>
+  <script src="words.js?v=39" defer></script>
+  <script src="game.js?v=39" defer></script>
 </body>
 </html>
