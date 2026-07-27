@@ -207,16 +207,21 @@ body {
   cursor: pointer;
 }
 .key.key-wide { min-width: clamp(6rem, 9vw, 9rem); font-size: 1.1rem; }
-/* ENTER shows the remote's Play/pause glyph (⏯) — pressing the physical
+/* ENTER shows the remote's Play/pause glyph — pressing the physical
    Play/pause button submits the guess. Accented as the primary action. */
 .key.key-enter { background: var(--accent); }
-/* DEL shows the remote's Rewind glyph (⏪) — its own warm-red so it reads as
+/* DEL shows the remote's Rewind glyph — its own warm-red so it reads as
    "remove/erase", distinct from the blue ENTER and the neutral letter keys. */
 .key.key-del { background: var(--del); }
 /* ENTER/DEL stack a remote glyph over a word caption ("Enter" / "Erase") so the
    action is unmistakable at 10 feet. flex-column centers the two lines. */
 .key.key-enter, .key.key-del { flex-direction: column; gap: .1rem; line-height: 1; }
-.key-glyph { font-size: 1.4rem; }
+/* The glyph is inline SVG, not an emoji character, so it renders identically on
+   every platform (the emoji versions came out blue/grey on Fire OS and orange on
+   Vega — each WebView used its own emoji font). Size the SVG box, not a
+   font-size; flex centers it on the caption above the text. */
+.key-glyph { display: flex; align-items: center; justify-content: center; }
+.key-svg { width: 1.4rem; height: 1.4rem; display: block; }
 .key-caption { font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: none; }
 .key.correct { background: var(--correct); }
 .key.present { background: var(--present); }

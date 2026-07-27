@@ -466,6 +466,18 @@ function buildBoard() {
   }
 }
 
+// Transport icons for the ENTER/DEL keys, mirroring the physical remote's
+// Play/pause and Rewind buttons. Inline SVG (not emoji) so they render
+// identically across the Fire OS WebView, Vega, and desktop browsers — see the
+// note in buildKeyboard(). `fill="currentColor"` inherits the key's text color;
+// aria-hidden because the button carries its own aria-label.
+const ICON_REWIND =
+  '<svg class="key-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">' +
+  '<path d="M11 6v12L3 12zM21 6v12l-8-6z"/></svg>';
+const ICON_PLAY_PAUSE =
+  '<svg class="key-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">' +
+  '<path d="M3 6v12l8-6zM14 6h2.6v12H14zM18.4 6H21v12h-2.6z"/></svg>';
+
 function buildKeyboard() {
   const kb = document.getElementById("keyboard");
   kb.innerHTML = "";
@@ -479,12 +491,18 @@ function buildKeyboard() {
       key.dataset.navGroup = "keyboard";
       key.dataset.key = k;
       // ENTER/DEL are the two actions bound to remote media keys. Show the
-      // matching remote glyph (ENTER = Play/pause ⏯, DEL = Rewind ⏪, same icons
-      // as the physical Fire TV remote) AND a word caption underneath, so the
+      // matching remote glyph (ENTER = Play/pause, DEL = Rewind, same icons as
+      // the physical Fire TV remote) AND a word caption underneath, so the
       // glyph teaches the remote mapping while the text removes any doubt about
       // what the button does. Letter keys stay plain text.
+      //
+      // The glyphs are INLINE SVG, not emoji (⏪/⏯). Emoji have no intrinsic
+      // color or shape — every platform paints them with its own emoji font, so
+      // the same characters came out blue/grey in the Fire OS WebView and orange
+      // on Vega. SVG paths filled with currentColor render identically on every
+      // platform and inherit the key's text color.
       if (k === "DEL" || k === "ENTER") {
-        const glyph = k === "DEL" ? "⏪" : "⏯";
+        const glyph = k === "DEL" ? ICON_REWIND : ICON_PLAY_PAUSE;
         const caption = k === "DEL" ? "Erase" : "Enter";
         key.innerHTML =
           `<span class="key-glyph">${glyph}</span><span class="key-caption">${caption}</span>`;
@@ -1318,7 +1336,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v35 (custom domain wordsondemand.badgames4eva.com pinned via CNAME)");
+  console.log("Words on Demand — build v36 (Erase/Enter key faces are inline SVG, not platform emoji)");
   wire();
   renderHomeStats();
   showScreen("home");

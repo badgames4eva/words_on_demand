@@ -74,16 +74,23 @@ for player-facing asset changes (HTML/CSS/JS); doc-only commits don't need it.
 | Remote        | Keyboard (desktop) | Action                                        |
 |---------------|--------------------|-----------------------------------------------|
 | D-pad         | Arrow keys         | Move focus                                    |
-| OK / Select   | Enter              | Activate focused element (type a letter, press the on-screen ⏯/⏪ keys) |
-| Play/pause    | (MediaPlay)        | Submit the current guess (shortcut — no need to reach the ⏯ key). Off the board: same as OK |
+| OK / Select   | Enter              | Activate focused element (type a letter, press the on-screen Enter/Erase keys) |
+| Play/pause    | (MediaPlay)        | Submit the current guess (shortcut — no need to reach the Enter key). Off the board: same as OK |
 | Rewind        | (MediaRewind)      | Delete: tap = one letter, hold = wipe the row (incl. carried-down greens) |
 | Back          | Backspace / Esc    | Close dialog, delete letter, or go home       |
 | —             | A–Z keys           | Type directly (testing only)                  |
 
 On the on-screen keyboard, **Left/Right wrap within a row** (P⇄Q, L⇄A, ENTER⇄Z)
 so the D-pad never dead-ends at a row edge. The ENTER key shows the remote's
-**Play/pause** glyph (⏯) and DEL shows the **Rewind** glyph (⏪), matching the
-physical buttons bound to those actions.
+**Play/pause** icon and DEL shows the **Rewind** icon, matching the physical
+buttons bound to those actions.
+
+Those two icons are **inline SVG** (`ICON_REWIND` / `ICON_PLAY_PAUSE` in
+[game.js](game.js)), deliberately not the ⏯/⏪ emoji. Emoji carry no intrinsic
+color or shape — each platform paints them with its own emoji font, so the same
+characters rendered blue/grey in the Fire OS WebView but orange on Vega. SVG
+filled with `currentColor` renders identically everywhere. Don't reintroduce
+emoji on these keys.
 
 ### Native BACK contract (Fire OS / Vega wrapper)
 
