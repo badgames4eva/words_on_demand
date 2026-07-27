@@ -1301,7 +1301,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v32 (ad screen: D-pad Continue escape hatch for unreachable ad controls)");
+  console.log("Words on Demand — build v32 (fit board+keyboard within TV height)");
   wire();
   renderHomeStats();
   showScreen("home");
