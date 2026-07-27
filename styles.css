@@ -127,10 +127,13 @@ body {
   z-index: 10;
 }
 .header-title { font-size: 1.6rem; font-weight: 700; }
-.header-streak { display: flex; align-items: center; gap: .4rem; font-size: 1.6rem; font-weight: 700; }
+/* Flame + count on top, a "Day Streak" caption underneath (mirrors the
+   home-screen stat) so the flame's meaning is spelled out. */
+.header-streak { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
 .header-streak[hidden] { display: none; }
+.streak-top { display: flex; align-items: center; gap: .4rem; font-size: 1.6rem; font-weight: 700; }
 .streak-label {
-  font-size: .95rem; font-weight: 600; color: var(--muted);
+  font-size: .85rem; font-weight: 600; color: var(--muted);
   text-transform: uppercase; letter-spacing: .08em;
 }
 .icon-btn {

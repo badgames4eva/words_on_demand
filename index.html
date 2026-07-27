@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=26" />
+  <link rel="stylesheet" href="styles.css?v=27" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -45,9 +45,11 @@
       <!-- Daily-solve streak. Hidden entirely at 0 (a bare "0 🔥" reads as
            cryptic); shown with a STREAK label once the player has one going. -->
       <div class="header-streak" id="header-streak" hidden>
-        <span class="streak-flame" aria-hidden="true">🔥</span>
-        <span class="streak-num" id="game-streak">0</span>
-        <span class="streak-label">Streak</span>
+        <span class="streak-top">
+          <span class="streak-flame" aria-hidden="true">🔥</span>
+          <span class="streak-num" id="game-streak">0</span>
+        </span>
+        <span class="streak-label">Day Streak</span>
       </div>
     </header>
 
@@ -148,9 +150,9 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v26</div>
+  <div id="build-badge">build v27</div>
 
-  <script src="words.js?v=26"></script>
-  <script src="game.js?v=26"></script>
+  <script src="words.js?v=27"></script>
+  <script src="game.js?v=27"></script>
 </body>
 </html>

@@ -1113,7 +1113,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v26 (hint reveal persists under the button until the next guess)");
+  console.log("Words on Demand — build v27 (header streak: 'Day Streak' caption under the flame + count)");
   wire();
   renderHomeStats();
   showScreen("home");
