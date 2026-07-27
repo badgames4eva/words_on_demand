@@ -89,7 +89,7 @@ const exposer = `
     game, knownGreens, resetCurrentRow, nextEditableCol,
     typeLetter, removeLetter, currentGuess, wipeCurrentRow,
     rewindPress, rewindRelease,
-    unrevealedColumns, hintAvailable, nextKeyInRow,
+    unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen,
   };`;

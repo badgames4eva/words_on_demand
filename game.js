@@ -811,19 +811,49 @@ function unrevealedColumns() {
 // A hint is offered only when: the puzzle's live, no hint spent on THIS row yet,
 // and there are at least TWO unknown letters (never reveal the last one).
 function hintAvailable() {
-  if (game.finished) return false;
-  if (game.hintRow === game.guesses.length) return false; // already used this row
-  return unrevealedColumns().length >= 2;
+  return hintDisabledReason() === null;
 }
 
-// Grey out / re-enable the button to match hintAvailable(). Keeps it focusable
-// so D-pad focus doesn't get stranded, but a press while disabled is a no-op.
+// WHY a hint isn't available right now (or null if it is). Lets the button
+// explain itself instead of just greying out — a dead-end control confuses.
+//   "used"      -> already spent a hint on this row; comes back next guess
+//   "last"      -> only one unknown letter left; revealing it = the answer
+//   "finished"  -> the round's over
+function hintDisabledReason() {
+  if (game.finished) return "finished";
+  if (game.hintRow === game.guesses.length) return "used";
+  if (unrevealedColumns().length < 2) return "last";
+  return null;
+}
+
+// Repaint the hint button to match its state. When available it invites a tap
+// ("Reveal a Letter" + "Watch Ad"); when disabled it dims AND swaps in the
+// reason so the player knows why (and, for the common case, that another hint
+// returns next row). Stays focusable so D-pad focus never strands.
+const HINT_COPY = {
+  available: { text: "Reveal a Letter", badge: "Watch Ad" },
+  used:      { text: "Hint used", badge: "Next row" },
+  last:      { text: "Just one letter left!", badge: "" },
+  finished:  { text: "Reveal a Letter", badge: "" },
+};
 function refreshHintButton() {
   const btn = document.getElementById("btn-hint");
   if (!btn) return;
-  const on = hintAvailable();
-  btn.classList.toggle("is-disabled", !on);
-  btn.setAttribute("aria-disabled", on ? "false" : "true");
+  const reason = hintDisabledReason();
+  const copy = HINT_COPY[reason || "available"];
+
+  btn.classList.toggle("is-disabled", reason !== null);
+  btn.setAttribute("aria-disabled", reason !== null ? "true" : "false");
+
+  const textEl = btn.querySelector(".hint-text");
+  const badgeEl = btn.querySelector(".hint-badge");
+  if (textEl) textEl.textContent = copy.text;
+  if (badgeEl) { badgeEl.textContent = copy.badge; badgeEl.hidden = !copy.badge; }
+
+  btn.setAttribute("aria-label",
+    reason === "used" ? "Hint already used this row — another is available on your next guess"
+    : reason === "last" ? "No hint — only one letter left to find"
+    : "Reveal a letter — watch an ad");
 }
 
 function useHint() {
@@ -1113,7 +1143,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v27 (header streak: 'Day Streak' caption under the flame + count)");
+  console.log("Words on Demand — build v28 (disabled hint explains why: 'Hint used / Next row')");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -1128,7 +1158,7 @@ if (typeof module !== "undefined" && module.exports) {
     game, knownGreens, resetCurrentRow, nextEditableCol,
     typeLetter, removeLetter, currentGuess, wipeCurrentRow,
     rewindPress, rewindRelease,
-    unrevealedColumns, hintAvailable, nextKeyInRow,
+    unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };
 }

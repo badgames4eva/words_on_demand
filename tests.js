@@ -42,7 +42,8 @@
         removeLetter = G.removeLetter, currentGuess = G.currentGuess,
         wipeCurrentRow = G.wipeCurrentRow, rewindPress = G.rewindPress,
         rewindRelease = G.rewindRelease, unrevealedColumns = G.unrevealedColumns,
-        hintAvailable = G.hintAvailable, nextKeyInRow = G.nextKeyInRow;
+        hintAvailable = G.hintAvailable, hintDisabledReason = G.hintDisabledReason,
+        nextKeyInRow = G.nextKeyInRow;
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
         getActiveScreen = G.getActiveScreen;
@@ -395,6 +396,29 @@
     withHintState("PLATE", [], -1, () => {
       game.finished = true;
       ok(!hintAvailable(), "no hint after the round ends");
+    });
+  });
+  // hintDisabledReason drives the button's explanatory copy ("Hint used /
+  // Next row" etc.), so each disabled state must map to the right reason.
+  test("hint: reason is null when a hint is available", () => {
+    withHintState("PLATE", [], -1, () => {
+      eq(hintDisabledReason(), null, "available => no reason");
+    });
+  });
+  test("hint: reason 'used' when spent on the current row", () => {
+    withHintState("PLANK", ["PLAID"], 1, () => {
+      eq(hintDisabledReason(), "used", "burned this row => 'used'");
+    });
+  });
+  test("hint: reason 'last' when only one unknown letter remains", () => {
+    withHintState("PLATE", ["PLANE"], -1, () => {
+      eq(hintDisabledReason(), "last", "one unknown => 'last'");
+    });
+  });
+  test("hint: reason 'finished' after the round ends", () => {
+    withHintState("PLATE", [], -1, () => {
+      game.finished = true;
+      eq(hintDisabledReason(), "finished", "over => 'finished'");
     });
   });
 
