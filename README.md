@@ -41,6 +41,34 @@ the same assertions in [tests.js](tests.js) against the real `words.js`/`game.js
 Visual and feel (10-foot layout, focus ring, ad screen) stay a manual check in
 the actual page.
 
+## Deploy
+
+Hosted on **GitHub Pages**, served straight from `main` (no `gh-pages` branch, no
+build step) at the custom domain above. **Pushing to `main` is the deploy** — Pages
+rebuilds in ~1–2 min. Every release bumps a version so TVs and browsers don't serve
+stale cached assets; the on-screen build badge (bottom-right) is how you confirm the
+new code actually went live.
+
+To cut a release:
+
+1. **Bump the version** everywhere it appears — the `?v=N` cache-bust on all three
+   asset links *and* the badge in [index.html](index.html), plus the boot-log line in
+   [game.js](game.js). From the repo root:
+   ```bash
+   sed -i '' 's/?v=34/?v=35/g; s/build v34/build v35/g' index.html   # N → N+1
+   ```
+   Then hand-edit the `console.log("… build vN …")` at the bottom of [game.js](game.js)
+   (it's not covered by the sed). Keep all four in sync — a mismatch means the badge
+   lies about what's loaded.
+2. **Run the tests** — `node run-tests.js` must be all-green before pushing.
+3. **Commit and push** `git push origin main`.
+4. **Confirm live**: hard-refresh <https://wordsondemand.badgames4eva.com/>
+   (Cmd+Shift+R to beat the cache) and check the badge shows the new `vN`.
+
+The `CNAME` file at the repo root pins the custom domain — leave it in place; deleting
+it reverts the site to the `*.github.io` URL on the next push. Only bump the version
+for player-facing asset changes (HTML/CSS/JS); doc-only commits don't need it.
+
 ## Controls (remote contract)
 
 | Remote        | Keyboard (desktop) | Action                                        |
