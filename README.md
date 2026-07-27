@@ -11,6 +11,9 @@ dictionary (zero content-licensing cost).
 > rationale behind the genre choice, remote-first constraints, monetization rules,
 > COPPA guardrail, and launch sequencing.
 
+**Live:** <https://wordsondemand.badgames4eva.com/> (GitHub Pages, custom domain — the
+`CNAME` file pins it; don't delete it or a push reverts to the `*.github.io` URL).
+
 ## Run it
 
 No build step. Just open it in a browser:
