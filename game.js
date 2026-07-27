@@ -21,6 +21,25 @@ const CONFIG = {
     interstitial: 5,      // "one more round" break ad
     rewarded: 5,          // hint (rewarded video) — reward granted on completion
   },
+  // ---- Real ads (Google IMA HTML5 SDK, serving VAST) -----------------------
+  // The whole ad integration is gated on these two things being present:
+  //   1) the IMA SDK script (loaded from index.html), and
+  //   2) a VAST tag URL below.
+  // When EITHER is missing, playAd() falls back to the built-in placeholder
+  // countdown — so the browser demo, GitHub Pages, and the headless tests all
+  // keep working with zero ad infrastructure. To go live, paste your Google Ad
+  // Manager VAST tag URLs here (per placement) — no code change needed.
+  //
+  // AdMob is deliberately NOT used: it has no CTV/TV form-factor support and
+  // running it on TV apps risks account bans. IMA+VAST is the web/WebView path
+  // that works identically on Fire TV and Android TV.
+  vastTags: {
+    interstitial: null,   // e.g. "https://pubads.g.doubleclick.net/gampad/ads?..."
+    rewarded: null,       // rewarded-hint VAST tag (may be the same GAM ad unit)
+  },
+  // Hard ceiling on how long we wait for the SDK to start an ad before giving
+  // up and resuming play. An ad must never strand the player.
+  adLoadTimeoutMs: 8000,
   // Placeholder seam for Phase 4 remote word lists (ship new dailies without an
   // app update). null = use the built-in ANSWERS pool.
   wordListUrl: null,
@@ -759,10 +778,19 @@ function renderResult() {
 }
 
 // ---------------------------------------------------------------------------
-// Interstitial ad — shown between rounds only (respects the doc's UX rule).
+// Ads — shown at natural breaks only (interstitial between rounds; opt-in
+// rewarded video for the hint). Both funnel through playAd(); the only
+// difference is placement (which VAST tag) and what onDone does.
+//
+// playAd is the single integration seam. When a real VAST tag is configured
+// AND the Google IMA SDK is present it plays a real video ad; otherwise it
+// falls back to a placeholder countdown so the browser demo and headless tests
+// keep working with no ad infrastructure. Whatever happens — ad completes, is
+// skipped, errors, doesn't fill, or the SDK never loads — onDone fires EXACTLY
+// once. An ad must never strand the player.
 // ---------------------------------------------------------------------------
 let adPlaying = false;
-function playAd(seconds, onDone) {
+function playAd(seconds, onDone, placement) {
   // Never start a second ad while one is showing. Without this guard, a stray
   // extra activation (double-click, Enter + click, a lingering timer) can stack
   // two ads — and on a real ad SDK, invoking it re-entrantly is undefined
@@ -770,24 +798,117 @@ function playAd(seconds, onDone) {
   if (adPlaying) return;
   adPlaying = true;
 
+  // Wrap onDone so it can only ever resume gameplay once, and always releases
+  // the one-ad-at-a-time latch. Every terminal branch below calls resume().
+  let resumed = false;
+  const resume = () => {
+    if (resumed) return;
+    resumed = true;
+    adPlaying = false;
+    onDone();
+  };
+
   showScreen("ad");
+
+  const vastTag = CONFIG.vastTags && placement ? CONFIG.vastTags[placement] : null;
+  if (vastTag && imaAvailable()) {
+    playImaAd(vastTag, resume);
+  } else {
+    playPlaceholderAd(seconds, resume);
+  }
+}
+
+// Is the Google IMA HTML5 SDK loaded? (index.html loads it from Google's CDN;
+// absent in the plain-browser demo and in the headless test sandbox.)
+function imaAvailable() {
+  return typeof google !== "undefined" && google.ima && google.ima.AdsLoader;
+}
+
+// Fallback "ad": the original faux-video countdown. Used whenever real ads
+// aren't wired (no VAST tag) or the SDK isn't present.
+function playPlaceholderAd(seconds, resume) {
   const bar = document.getElementById("ad-bar");
   const count = document.getElementById("ad-count");
   let elapsed = 0;
-  bar.style.width = "0%";
-  count.textContent = seconds;
+  if (bar) bar.style.width = "0%";
+  if (count) count.textContent = seconds;
 
   const tick = setInterval(() => {
     elapsed += 0.1;
     const pct = Math.min(100, (elapsed / seconds) * 100);
-    bar.style.width = pct + "%";
-    count.textContent = Math.max(0, Math.ceil(seconds - elapsed));
+    if (bar) bar.style.width = pct + "%";
+    if (count) count.textContent = Math.max(0, Math.ceil(seconds - elapsed));
     if (elapsed >= seconds) {
       clearInterval(tick);
-      adPlaying = false;
-      onDone();
+      resume();
     }
   }, 100);
+}
+
+// Real video ad via the Google IMA HTML5 SDK. Requests the VAST tag, plays the
+// ad inside #ad-box, and calls resume() on ANY terminal outcome — completion,
+// skip, error, no-fill, or a load timeout. Defensive throughout: a thrown SDK
+// error can't wedge the player because both the catch and the timeout resume.
+function playImaAd(vastTag, resume) {
+  const host = document.getElementById("ad-box");
+  if (!host) { resume(); return; }
+
+  // Backstop: if the SDK never starts an ad (slow network, no fill and no error
+  // callback), resume anyway after the configured ceiling.
+  const guardMs = (CONFIG.adLoadTimeoutMs > 0) ? CONFIG.adLoadTimeoutMs : 8000;
+  let timeout = setTimeout(finish, guardMs);
+  let adsManager = null;
+  function finish() {
+    if (timeout) { clearTimeout(timeout); timeout = null; }
+    try { if (adsManager) adsManager.destroy(); } catch (e) { /* ignore */ }
+    adsManager = null;
+    resume();
+  }
+
+  try {
+    // IMA renders over a content element; we have no content video, so a bare
+    // container inside the ad box is enough for a standalone ad break.
+    const adContainer = document.createElement("div");
+    adContainer.className = "ima-ad-container";
+    host.appendChild(adContainer);
+
+    const adDisplayContainer = new google.ima.AdDisplayContainer(adContainer);
+    // Must be called synchronously off a user gesture — the OK/Play press that
+    // triggered this ad qualifies on CTV.
+    adDisplayContainer.initialize();
+
+    const adsLoader = new google.ima.AdsLoader(adDisplayContainer);
+    adsLoader.addEventListener(
+      google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
+      (e) => {
+        // Cancel the load-timeout now that an ad is actually starting.
+        if (timeout) { clearTimeout(timeout); timeout = null; }
+        try {
+          adsManager = e.getAdsManager(adContainer);
+          const done = google.ima.AdEvent.Type;
+          adsManager.addEventListener(done.ALL_ADS_COMPLETED, finish);
+          adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR, finish);
+          const w = host.clientWidth || 1280;
+          const h = host.clientHeight || 720;
+          adsManager.init(w, h, google.ima.ViewMode.NORMAL);
+          adsManager.start();
+        } catch (err) { finish(); }
+      },
+      false
+    );
+    // Any loader error (bad tag, no fill, network) resumes play.
+    adsLoader.addEventListener(
+      google.ima.AdErrorEvent.Type.AD_ERROR, finish, false
+    );
+
+    const req = new google.ima.AdsRequest();
+    req.adTagUrl = vastTag;
+    req.linearAdSlotWidth = host.clientWidth || 1280;
+    req.linearAdSlotHeight = host.clientHeight || 720;
+    adsLoader.requestAds(req);
+  } catch (err) {
+    finish();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -862,6 +983,7 @@ function useHint() {
   const rowAtRequest = game.guesses.length; // pin the row the hint is spent on
 
   playAd(CONFIG.adSeconds.rewarded, () => {
+    // Reward granted only after the ad's terminal callback (rewarded pattern).
     // Pick a RANDOM unknown column, not the left-most, so hints don't leak the
     // word left-to-right. Vary by a non-persisted draw (fine for a UX sprinkle).
     const pos = candidates[Math.floor(Math.random() * candidates.length)];
@@ -872,7 +994,7 @@ function useHint() {
     showScreen("game");
     refreshHintButton();
     renderHintReveal();
-  });
+  }, "rewarded");
 }
 
 // Show the persisted reveal under the hint button. It stays put until the next
@@ -1017,7 +1139,7 @@ function wire() {
   // fresh puzzle. Jump straight to the next unfinished one and play a single ad.
   document.getElementById("btn-next").onclick = () => {
     const nextOffset = nextUnplayedOffset(game.roundOffset);
-    playAd(CONFIG.adSeconds.interstitial, () => startRound(nextOffset));
+    playAd(CONFIG.adSeconds.interstitial, () => startRound(nextOffset), "interstitial");
   };
 
   // Exit-confirmation dialog (raised by native BACK on the home screen).
@@ -1143,7 +1265,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v29 (spent-hint copy: 'Next hint after your next guess')");
+  console.log("Words on Demand — build v31 (real ads: Google IMA VAST via playAd seam, placeholder fallback)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -1159,6 +1281,7 @@ if (typeof module !== "undefined" && module.exports) {
     typeLetter, removeLetter, currentGuess, wipeCurrentRow,
     rewindPress, rewindRelease,
     unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow,
+    imaAvailable,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };
 }

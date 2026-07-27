@@ -90,6 +90,7 @@ const exposer = `
     typeLetter, removeLetter, currentGuess, wipeCurrentRow,
     rewindPress, rewindRelease,
     unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow,
+    imaAvailable,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen,
   };`;

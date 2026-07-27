@@ -43,7 +43,7 @@
         wipeCurrentRow = G.wipeCurrentRow, rewindPress = G.rewindPress,
         rewindRelease = G.rewindRelease, unrevealedColumns = G.unrevealedColumns,
         hintAvailable = G.hintAvailable, hintDisabledReason = G.hintDisabledReason,
-        nextKeyInRow = G.nextKeyInRow;
+        nextKeyInRow = G.nextKeyInRow, imaAvailable = G.imaAvailable;
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
         getActiveScreen = G.getActiveScreen;
@@ -248,6 +248,18 @@
     ok(CONFIG.adSeconds.interstitial > 0, "interstitial seconds");
     ok(CONFIG.adSeconds.rewarded > 0, "rewarded seconds");
     ok(CONFIG.revealDelayMs >= 0, "reveal delay");
+  });
+  // Real-ads seam (Google IMA/VAST). The placeholder is the shipped default:
+  // playAd only routes to IMA when a VAST tag is set AND the SDK is loaded.
+  test("ads: IMA is absent without the SDK (fall back to placeholder)", () => {
+    ok(!imaAvailable(), "no google.ima in the test/browser-demo sandbox => placeholder");
+  });
+  test("ads: VAST tag slots exist and default to null (placeholder until configured)", () => {
+    ok("interstitial" in CONFIG.vastTags, "interstitial tag slot present");
+    ok("rewarded" in CONFIG.vastTags, "rewarded tag slot present");
+    eq(CONFIG.vastTags.interstitial, null, "no live interstitial tag by default");
+    eq(CONFIG.vastTags.rewarded, null, "no live rewarded tag by default");
+    ok(CONFIG.adLoadTimeoutMs > 0, "ad-load timeout is a positive backstop");
   });
 
   // ---- carry-down greens: don't make the player re-type known letters ----
