@@ -127,7 +127,12 @@ body {
   z-index: 10;
 }
 .header-title { font-size: 1.6rem; font-weight: 700; }
-.header-streak { font-size: 1.6rem; font-weight: 700; }
+.header-streak { display: flex; align-items: center; gap: .4rem; font-size: 1.6rem; font-weight: 700; }
+.header-streak[hidden] { display: none; }
+.streak-label {
+  font-size: .95rem; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em;
+}
 .icon-btn {
   font-size: 1.3rem; font-weight: 600; color: var(--text);
   background: transparent; border: 3px solid transparent; border-radius: 10px;

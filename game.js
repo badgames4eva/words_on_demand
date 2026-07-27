@@ -677,7 +677,7 @@ function startRound(offset) {
   resetCurrentRow();       // carry down greens from any resumed guesses
 
   document.getElementById("puzzle-no").textContent = puzzleIndex(offset);
-  document.getElementById("game-streak").textContent = store.data.streak;
+  renderHeaderStreak();
 
   // A puzzle that's already been completed goes straight to its result — no replay.
   if (game.finished) { renderResult(); showScreen("result"); return; }
@@ -858,6 +858,17 @@ function toast(msg) {
 // ---------------------------------------------------------------------------
 // Home stats + wiring
 // ---------------------------------------------------------------------------
+// Game-header streak: hide it at 0 (a bare flame with 0 confuses more than it
+// motivates), otherwise show the count + a "Streak" label with an aria summary.
+function renderHeaderStreak() {
+  const wrap = document.getElementById("header-streak");
+  if (!wrap) return;
+  const n = store.data.streak;
+  wrap.hidden = n < 1;
+  document.getElementById("game-streak").textContent = n;
+  wrap.setAttribute("aria-label", `${n} day streak`);
+}
+
 function renderHomeStats() {
   document.getElementById("home-streak").textContent = store.data.streak;
   document.getElementById("home-played").textContent = store.data.played;
@@ -1083,7 +1094,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v24 (hint button: solid clickable style + 'Watch Ad' pill)");
+  console.log("Words on Demand — build v25 (header streak: 'Streak' label + hidden at 0)");
   wire();
   renderHomeStats();
   showScreen("home");
