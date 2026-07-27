@@ -75,6 +75,17 @@ Connected-TV/D-pad support, so a skip button may be **unreachable by a remote**.
   ```
 
 - Generate one for the interstitial unit and one for the rewarded unit.
+- **Append `&npa=1` to both tags.** This requests **non-personalized ads** — no
+  interest-profile targeting off the device's advertising ID. It's not optional bookkeeping:
+  the store submissions declare "ads are non-personalized"
+  ([STORE_COMPLIANCE.md](STORE_COMPLIANCE.md)), and a tag without `npa=1` makes that
+  declaration false, which is a policy violation in both stores. It also keeps the app out
+  of consent-banner territory (GDPR/CPRA) — hard to do well with a D-pad and no pointer.
+  Belt-and-braces: also set the restriction at the GAM network level so a hand-copied tag
+  can't quietly re-enable personalization.
+- While you're in GAM, set the **ad content rating filter** to the app's own rating band or
+  lower. A "Rated for 3+" app serving an alcohol creative violates policy even though the
+  game's own content is clean.
 - Sanity-check each in Google's **VAST Suite Inspector** (search "IMA VAST inspector")
   before wiring — confirms the tag returns a playable creative.
 
@@ -84,8 +95,8 @@ In [game.js](game.js), in the `CONFIG` block (~line 30):
 
 ```js
 vastTags: {
-  interstitial: "https://pubads.g.doubleclick.net/gampad/ads?iu=/NETWORK/wod-interstitial&...&output=vast",
-  rewarded:     "https://pubads.g.doubleclick.net/gampad/ads?iu=/NETWORK/wod-rewarded&...&output=vast",
+  interstitial: "https://pubads.g.doubleclick.net/gampad/ads?iu=/NETWORK/wod-interstitial&...&output=vast&npa=1",
+  rewarded:     "https://pubads.g.doubleclick.net/gampad/ads?iu=/NETWORK/wod-rewarded&...&output=vast&npa=1",
 },
 ```
 

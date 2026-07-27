@@ -14,6 +14,11 @@ dictionary (zero content-licensing cost).
 **Live:** <https://wordsondemand.badgames4eva.com/> (GitHub Pages, custom domain — the
 `CNAME` file pins it; don't delete it or a push reverts to the `*.github.io` URL).
 
+**Privacy policy:** <https://wordsondemand.badgames4eva.com/privacy.html> — the URL both
+stores require in the listing. Source of truth is [PRIVACY.md](PRIVACY.md); keep
+[privacy.html](privacy.html) in sync with it. Store questionnaire answers (Data Safety,
+ads declaration, content rating) are in [STORE_COMPLIANCE.md](STORE_COMPLIANCE.md).
+
 ## Run it
 
 No build step. Just open it in a browser:
