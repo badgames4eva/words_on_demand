@@ -69,6 +69,35 @@ The `CNAME` file at the repo root pins the custom domain — leave it in place; 
 it reverts the site to the `*.github.io` URL on the next push. Only bump the version
 for player-facing asset changes (HTML/CSS/JS); doc-only commits don't need it.
 
+### Load performance
+
+Origin is GitHub Pages behind Cloudflare. What's already handled in this repo:
+
+- **Deferred scripts** — `words.js`/`game.js` carry `defer`, so neither blocks HTML
+  parsing. They keep document order and run before `DOMContentLoaded`, which is what
+  the bottom-of-body boot block in [game.js](game.js) needs (`#btn-play` must exist).
+- **Lazy ad SDK** — the ~488 KB Google IMA SDK is *not* in a `<script>` tag. It's
+  injected by `ensureImaSdk()` on the first "Play" (see [game.js](game.js)), so it never
+  competes with initial render. It also no-ops entirely while `CONFIG.vastTags` are
+  `null`, so the demo/dev path never touches Google's CDN.
+- **Compression is already on** via Cloudflare — Brotli, verified. Note that
+  `curl -I` *without* an `Accept-Encoding` header reports the uncompressed origin size
+  (words.js 119 KB); real browsers always send one and get ~42 KB. Measure with
+  `curl -sSI -H 'Accept-Encoding: br, gzip' <url> | grep -i content-encoding`.
+
+**Not fixable from this repo — needs a Cloudflare dashboard change.** GitHub Pages
+hard-codes `cache-control: public, max-age=0, must-revalidate` on every asset and
+supports no header config, so the browser revalidates all three files on every load and
+caching never helps. Since assets are already cache-busted with `?v=NN`, add a
+Cloudflare **Cache Rule**:
+
+- **When** `http.request.uri.path` ends with `.js` or `.css`
+- **Then** Cache eligibility: *Eligible for cache*; Edge TTL + **Browser TTL: 1 year**
+- Leave `index.html` alone (must stay `max-age=0, must-revalidate` so new `?v=` rolls out)
+
+That makes warm launches near-instant. Without it, the `?v=` scheme is doing correctness
+work but buying no speed.
+
 ## Controls (remote contract)
 
 | Remote        | Keyboard (desktop) | Action                                        |

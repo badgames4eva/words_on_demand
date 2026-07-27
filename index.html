@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=37" />
+  <link rel="stylesheet" href="styles.css?v=38" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -154,15 +154,18 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v37</div>
+  <div id="build-badge">build v38</div>
 
-  <!-- Google IMA HTML5 SDK — serves real VAST video ads inside the WebView on
-       Fire TV / Android TV. Loads async and is OPTIONAL: game.js falls back to
-       the placeholder ad when it's absent (browser demo, offline) or when no
-       VAST tag is set in CONFIG.vastTags. Left off the ?v= cache-bust since
-       it's an external, Google-versioned asset. -->
-  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js" async></script>
-  <script src="words.js?v=37"></script>
-  <script src="game.js?v=37"></script>
+  <!-- The Google IMA HTML5 SDK (~488 KB) is NOT requested here on purpose. It's
+       lazy-loaded by ensureImaSdk() in game.js on the first "Play", so it never
+       competes with initial render on a cold TV start. It stays OPTIONAL either
+       way: game.js falls back to the placeholder ad when it's absent (browser
+       demo, offline) or when no VAST tag is set in CONFIG.vastTags. -->
+
+  <!-- defer: don't block HTML parsing. Both keep document order and run after
+       the document is parsed, so game.js's bottom-of-body boot block still finds
+       #btn-play and the DOM it wires. -->
+  <script src="words.js?v=38" defer></script>
+  <script src="game.js?v=38" defer></script>
 </body>
 </html>

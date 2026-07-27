@@ -889,10 +889,34 @@ function hideAdEscape() {
   if (btn) { btn.hidden = true; btn.onclick = null; }
 }
 
-// Is the Google IMA HTML5 SDK loaded? (index.html loads it from Google's CDN;
+// Is the Google IMA HTML5 SDK loaded? (lazy-loaded by ensureImaSdk below;
 // absent in the plain-browser demo and in the headless test sandbox.)
 function imaAvailable() {
   return typeof google !== "undefined" && google.ima && google.ima.AdsLoader;
+}
+
+// Lazy-load the IMA SDK (~488 KB) instead of requesting it in index.html, so it
+// never competes with the initial render on a cold TV start. Called on the first
+// "Play" — long before the first ad can occur (an ad needs a finished round) —
+// so the SDK is warm by the time playAd() looks for it.
+//
+// Deliberately fire-and-forget: nothing in the render path or playAd() awaits
+// this. If it's slow, offline, blocked, or 404s, imaAvailable() simply stays
+// false and playAd() runs the placeholder. No-ops when no VAST tag is configured
+// (nothing to serve) and when the SDK is already present or in flight.
+const IMA_SDK_URL = "https://imasdk.googleapis.com/js/sdkloader/ima3.js";
+let imaSdkRequested = false;
+function ensureImaSdk() {
+  if (imaSdkRequested || imaAvailable()) return;
+  if (typeof document === "undefined") return;
+  const tags = CONFIG.vastTags || {};
+  if (!tags.interstitial && !tags.rewarded) return; // no real ads configured
+  imaSdkRequested = true;
+  const s = document.createElement("script");
+  s.src = IMA_SDK_URL;
+  s.async = true;
+  s.onerror = () => { imaSdkRequested = false; }; // allow a retry on a later Play
+  document.head.appendChild(s);
 }
 
 // Fallback "ad": the original faux-video countdown. Used whenever real ads
@@ -1194,7 +1218,10 @@ function wire() {
   // made one "One More Round" click fire the ad twice (then thrice): each extra
   // handler called playAd again after the previous ad finished, so the same-stack
   // adPlaying guard never saw them.
-  document.getElementById("btn-play").onclick = () => startRound(0);
+  document.getElementById("btn-play").onclick = () => {
+    ensureImaSdk(); // warm the ad SDK off the critical render path
+    startRound(0);
+  };
   document.getElementById("btn-history").onclick = () => { renderHistory(); showScreen("history"); };
   document.getElementById("btn-history-back").onclick = () => showScreen("home");
   document.getElementById("btn-howto").onclick = () => showScreen("howto");
@@ -1336,7 +1363,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v37 (ENTER key green, teal-shifted so it can't read as a scored letter)");
+  console.log("Words on Demand — build v38 (load perf: deferred scripts, lazy IMA SDK)");
   wire();
   renderHomeStats();
   showScreen("home");
