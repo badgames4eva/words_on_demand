@@ -63,11 +63,17 @@ Cheap, high-leverage, must-do-first. All in the existing web code.
 
 The placeholder `playAd()` is where the business is. This is the core of "production."
 
-- [ ] Replace `playAd()` with a real ad adapter behind the existing seam.
-      - **Android TV**: Google AdMob / IMA SDK (rewarded + interstitial).
-      - **Fire TV**: Amazon Publisher Services (APS), or AdMob via the WebView bridge.
-- [ ] **Fill-failure fallback**: if no ad loads, the game must continue gracefully
-      (never block a round on an ad). CTV fill rates run 30–60% — design for the miss.
+**Step-by-step account setup: [ADS_SETUP.md](ADS_SETUP.md)** (GAM account → video ad
+unit → VAST tag → paste into `CONFIG.vastTags`). The seam is already built.
+
+- [x] Real ad path wired behind the existing `playAd()` seam: **Google IMA HTML5 SDK**
+      serving VAST, gated on a tag being set in `CONFIG.vastTags` *and* the SDK being
+      present; otherwise the placeholder countdown runs. Going live is config-only
+      (paste two VAST tag URLs) — no code change. Back it with **Google Ad Manager**
+      (NOT AdMob — no CTV support, ban risk); add **Amazon APS** later for Fire TV.
+- [x] **Fill-failure fallback**: no-fill / load-timeout / ad-error all route through the
+      same idempotent `resume()` as a completed ad, so the game never blocks a round.
+      CTV fill rates run 30–60% and new inventory starts near zero — designed for the miss.
 - [ ] **Frequency capping**: interstitial only between rounds, cap per session.
 - [ ] **Rewarded flow**: the "reveal a letter" hint only grants reward on ad completion.
 - [ ] Wire ad events to analytics (fill rate, completion, revenue per session).
