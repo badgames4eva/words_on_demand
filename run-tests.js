@@ -89,7 +89,7 @@ const exposer = `
     game, knownGreens, resetCurrentRow, nextEditableCol,
     typeLetter, removeLetter, currentGuess, wipeCurrentRow,
     rewindPress, rewindRelease,
-    unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow,
+    unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow, pickInDirection,
     imaAvailable,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen,

@@ -43,7 +43,8 @@
         wipeCurrentRow = G.wipeCurrentRow, rewindPress = G.rewindPress,
         rewindRelease = G.rewindRelease, unrevealedColumns = G.unrevealedColumns,
         hintAvailable = G.hintAvailable, hintDisabledReason = G.hintDisabledReason,
-        nextKeyInRow = G.nextKeyInRow, imaAvailable = G.imaAvailable;
+        nextKeyInRow = G.nextKeyInRow, imaAvailable = G.imaAvailable,
+        pickInDirection = G.pickInDirection;
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
         getActiveScreen = G.getActiveScreen;
@@ -462,6 +463,103 @@
   test("kb-wrap: a non-keyboard key returns null (falls back to geometry)", () => {
     eq(nextKeyInRow("nope", "right"), null);
     eq(nextKeyInRow(undefined, "left"), null);
+  });
+
+  // ---- D-pad geometric navigation (pickInDirection) -----------------------
+  // The single most critical interaction, and the one most easily broken by a
+  // layout change (widening the keys skipped the middle row twice). These build
+  // a synthetic on-screen keyboard — three CENTERED rows with different key
+  // counts, so adjacent rows are horizontally misaligned exactly as on a real
+  // TV — and assert Up/Down land on the ADJACENT row, never skip one.
+  //
+  // Geometry mirrors the REAL full-screen-TV layout (the proportions that caused
+  // the skip): keys ~108px wide + 9px gap = ~117px pitch, but rows only ~85px
+  // apart. Crucially PITCH > ROW_GAP — the exact condition under which a well-
+  // aligned key two rows away can out-score an offset key one row away. Rows are
+  // centered about x=960 (a 1920px screen), and the bottom row's DEL/ENTER are
+  // ~162px wide, so its keys don't column-align with the rows above. Getting any
+  // of this wrong makes the test pass under the OLD buggy scoring too (verified),
+  // so these numbers matter.
+  const KEY_W = 108, WIDE_W = 162, GAP = 9, KEY_H = 76, ROW_GAP = 9, CENTER_X = 960;
+  const ROW_PITCH = KEY_H + ROW_GAP; // ~85 < key pitch ~117
+  // Lay out a row of keys (each {key, w}) centered on CENTER_X at vertical `top`.
+  function kbRow(keys, top) {
+    const totalW = keys.reduce((s, k) => s + k.w, 0) + (keys.length - 1) * GAP;
+    let x = CENTER_X - totalW / 2;
+    return keys.map((k) => {
+      const rect = { left: x, top, width: k.w, height: KEY_H };
+      x += k.w + GAP;
+      return { el: { key: k.key }, rect };
+    });
+  }
+  const norm = (s) => s.split("").map((c) => ({ key: c, w: KEY_W }));
+  const rowQ = kbRow(norm("QWERTYUIOP"), 600);
+  const rowA = kbRow(norm("ASDFGHJKL"), 600 + ROW_PITCH);
+  const rowZ = kbRow(
+    [...norm("ZXCVBNM"), { key: "DEL", w: WIDE_W }, { key: "ENTER", w: WIDE_W }],
+    600 + 2 * ROW_PITCH);
+  const KB = [...rowQ, ...rowA, ...rowZ];
+  const rectOf = (k) => KB.find((c) => c.el.key === k).rect;
+  const landing = (fromKey, dir) =>
+    (pickInDirection(rectOf(fromKey), KB.filter((c) => c.el.key !== fromKey), dir)
+     || {}).el; // returns {key} or undefined
+
+  test("dpad: Down from the top row lands on the MIDDLE row, never skips it", () => {
+    // The exact regression: with centered rows of differing widths, an aligned
+    // bottom-row key must not out-score the offset middle-row key one row down.
+    for (const k of ["Q","W","E","R","T","Y","U","I","O","P"]) {
+      const to = landing(k, "down");
+      ok(rowA.some((c) => c.el.key === to.key),
+         `Down from ${k} skipped the middle row (landed on ${to && to.key})`);
+    }
+  });
+
+  test("dpad: Down from the middle row lands on the BOTTOM row", () => {
+    for (const k of ["A","S","D","F","G","H","J","K","L"]) {
+      const to = landing(k, "down");
+      ok(rowZ.some((c) => c.el.key === to.key),
+         `Down from ${k} landed on ${to && to.key}, not the bottom row`);
+    }
+  });
+
+  test("dpad: Up mirrors Down — bottom→middle, middle→top, no row skipped", () => {
+    for (const k of ["Z","X","C","V","B","N","M"]) {
+      const to = landing(k, "up");
+      ok(rowA.some((c) => c.el.key === to.key),
+         `Up from ${k} skipped the middle row (landed on ${to && to.key})`);
+    }
+    for (const k of ["A","S","D","F","G","H","J","K","L"]) {
+      const to = landing(k, "up");
+      ok(rowQ.some((c) => c.el.key === to.key),
+         `Up from ${k} landed on ${to && to.key}, not the top row`);
+    }
+  });
+
+  test("dpad: Down lands on the nearest key, not just any key in the next row", () => {
+    // F sits near the middle; Down from the top row's R (also central) should
+    // reach a nearby middle key, not a far end one.
+    const to = landing("R", "down");
+    ok(["D","F","G"].includes(to.key), `Down from R landed on ${to.key}`);
+  });
+
+  test("dpad: no candidate in a direction returns null (edge of the layout)", () => {
+    // Nothing below the bottom row.
+    const to = pickInDirection(rectOf("B"), rowZ.filter((c) => c.el.key !== "B"), "down");
+    eq(to, null);
+  });
+
+  test("dpad: Left/Right pick the horizontal neighbor on an aligned grid", () => {
+    // Keyboard Left/Right is handled by nextKeyInRow's row-wrap BEFORE geometry
+    // (see kb-wrap tests), so geometric L/R really matters on the board — a
+    // perfectly aligned grid. Build one row of 5 board tiles and check neighbors.
+    const tiles = [0,1,2,3,4].map((i) => ({
+      el: { key: `t${i}` },
+      rect: { left: 300 + i * 110, top: 100, width: 100, height: 100 },
+    }));
+    const pick = (from, dir) =>
+      pickInDirection(tiles[from].rect, tiles.filter((_, i) => i !== from), dir).el.key;
+    eq(pick(2, "right"), "t3", "right of the middle tile is its right neighbor");
+    eq(pick(2, "left"), "t1", "left of the middle tile is its left neighbor");
   });
 
   // ---- native BACK contract ----------------------------------------------

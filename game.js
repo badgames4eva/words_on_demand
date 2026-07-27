@@ -277,16 +277,29 @@ function moveFocus(dir) {
     }
   }
 
-  const cur = focusedEl.getBoundingClientRect();
+  const best = pickInDirection(
+    focusedEl.getBoundingClientRect(),
+    items.filter((el) => el !== focusedEl)
+         .map((el) => ({ el, rect: el.getBoundingClientRect() })),
+    dir,
+  );
+  if (best) setFocus(best.el);
+}
+
+// Pure geometric focus decision: given the focused element's rect, the candidate
+// {el, rect} pairs, and a direction, return the winning candidate (or null).
+// Split out of moveFocus (which only supplies the DOM) so the D-pad's landing
+// choice — the single most critical interaction — is unit-tested against real
+// keyboard geometry, no browser needed. `rect` is any {left,top,width,height}.
+function pickInDirection(cur, candidates, dir) {
   const curX = cur.left + cur.width / 2;
   const curY = cur.top + cur.height / 2;
 
   let best = null;
   let bestScore = Infinity;
 
-  for (const el of items) {
-    if (el === focusedEl) continue;
-    const r = el.getBoundingClientRect();
+  for (const cand of candidates) {
+    const r = cand.rect;
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
     const dx = x - curX;
@@ -307,10 +320,10 @@ function moveFocus(dir) {
     const perp  = (dir === "up" || dir === "down") ? Math.abs(dx) : Math.abs(dy);
     const score = along * 3 + perp;
 
-    if (score < bestScore) { bestScore = score; best = el; }
+    if (score < bestScore) { bestScore = score; best = cand; }
   }
 
-  if (best) setFocus(best);
+  return best;
 }
 
 function activateFocused() {
@@ -1305,7 +1318,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v33 (D-pad: weight row distance so middle keyboard row is not skipped)");
+  console.log("Words on Demand — build v34 (unit tests for D-pad geometric navigation)");
   wire();
   renderHomeStats();
   showScreen("home");
