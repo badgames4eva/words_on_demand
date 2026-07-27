@@ -6,7 +6,7 @@ forms. Every answer below is grounded in an audit of what the code actually does
 
 - **Publisher (legal name):** badgames4eva
 - **Support / privacy contact:** badgameseva@gmail.com
-- **Privacy policy URL:** <https://wordsondemand.badgames4eva.com/privacy.html>
+- **Privacy policy URL:** <https://wordsondemand.badgames4eva.com/privacy>
   (source of truth: [PRIVACY.md](PRIVACY.md), rendered as [privacy.html](privacy.html))
 - **Target audience:** general audience, **not** child-directed
   (a child-directed classification forfeits ad revenue under COPPA — see [STEERING.md](STEERING.md))
@@ -196,7 +196,7 @@ The Amazon developer console asks for the same substance under different labels:
 
 | Amazon field | Answer |
 |---|---|
-| Privacy policy URL | <https://wordsondemand.badgames4eva.com/privacy.html> (**required**, not optional) |
+| Privacy policy URL | <https://wordsondemand.badgames4eva.com/privacy> (**required**, not optional) |
 | Does your app collect personal information? | **No** by the app itself; **Yes**, the ad SDK shares device ad IDs |
 | Does your app contain ads? | **Yes** |
 | Advertising ID usage | **Yes**, non-personalized ad serving and fraud prevention |

@@ -104,7 +104,7 @@ Safety, ads declaration, content rating, Amazon equivalents) — each answer gro
 audit of what the code actually does.
 
 - [x] **Privacy policy** written and hosted: [PRIVACY.md](PRIVACY.md) (source) rendered at
-      [privacy.html](privacy.html) → <https://wordsondemand.badgames4eva.com/privacy.html>.
+      [privacy.html](privacy.html) → <https://wordsondemand.badgames4eva.com/privacy>.
       Paste that URL into both store listings.
 - [ ] **In-app privacy link** — still open. A URL isn't reachable from a TV remote, so the
       plan is a short "Privacy" panel (like How to Play) that states the policy in-app and
