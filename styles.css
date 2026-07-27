@@ -235,6 +235,13 @@ body {
 /* When spent for the row / only one letter left, .is-disabled dims the whole
    button (see .btn.is-disabled); mute the badge so it doesn't stay loud. */
 .btn.btn-hint.is-disabled .hint-badge { background: var(--muted); }
+/* Persistent revealed-letter readout under the hint button. Sticks around until
+   the next guess (unlike the transient toast) so it's readable at a glance. */
+.hint-reveal {
+  margin: .7rem 0 0; font-size: 1.3rem; font-weight: 700;
+  color: var(--present); letter-spacing: .02em;
+}
+.hint-reveal[hidden] { display: none; }
 
 /* ============================ RESULT ============================ */
 .result-inner { text-align: center; max-width: 800px; }

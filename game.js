@@ -89,6 +89,7 @@ function saveProgress() {
     won: game.won,
     hintsUsed: game.hintsUsed,
     hintRow: game.hintRow, // row a hint was spent on (one-hint-per-row cap survives resume)
+    hintReveal: game.hintReveal, // last revealed letter, so it persists across resume
     solveMs: game.solveMs, // active solve time (timer pauses off the game screen)
     startedAt: game.startedAt, // device time the puzzle was first opened
     answer: game.answer, // stored so history can render without re-deriving
@@ -112,6 +113,7 @@ const game = {
   won: false,
   hintsUsed: 0,
   hintRow: -1,       // row index a hint was last spent on; caps hints at one/row
+  hintReveal: null,  // {pos, letter} last revealed; shown under the button until next submit
   solveMs: 0,        // active solve time; the timer pauses off the game screen
   timerStart: null,  // Date.now() when the timer last resumed; null while paused
   startedAt: null,   // device wall-clock (Date.now()) when this puzzle was first opened
@@ -576,6 +578,8 @@ function submitGuess() {
   updateKeyStates(guessed, scores);
 
   game.guesses.push(guessed);
+  game.hintReveal = null; // the reveal was for this row; clear it for the next guess
+  renderHintReveal();
   resetCurrentRow(); // seed the next row with any (now larger) set of greens
 
   if (guessed === game.answer) {
@@ -669,6 +673,7 @@ function startRound(offset) {
   game.won = saved ? saved.won : false;
   game.hintsUsed = saved ? (saved.hintsUsed || 0) : 0;
   game.hintRow = saved && saved.hintRow != null ? saved.hintRow : -1;
+  game.hintReveal = saved && saved.hintReveal ? saved.hintReveal : null;
   game.solveMs = saved ? (saved.solveMs || 0) : 0;
   // First-open device timestamp: keep the saved one on resume, else stamp now.
   game.startedAt = (saved && saved.startedAt) ? saved.startedAt : Date.now();
@@ -684,6 +689,7 @@ function startRound(offset) {
 
   renderCurrentRow();      // paint carried-down greens + cursor before showing
   refreshHintButton();     // reflect one-per-row / last-letter rules for this board
+  renderHintReveal();      // restore a persisted reveal (if the hint's still live)
   showScreen("game");
 }
 
@@ -831,11 +837,24 @@ function useHint() {
     const pos = candidates[Math.floor(Math.random() * candidates.length)];
     game.hintsUsed += 1;
     game.hintRow = rowAtRequest; // burn the hint for this row
+    game.hintReveal = { pos, letter: game.answer[pos] }; // persist under the button
     saveProgress();
     showScreen("game");
     refreshHintButton();
-    toast(`Letter ${pos + 1} is “${game.answer[pos]}”`);
+    renderHintReveal();
   });
+}
+
+// Show the persisted reveal under the hint button. It stays put until the next
+// guess is submitted (submitGuess clears game.hintReveal), so a player who
+// glanced away doesn't lose it the way a 1.6s toast disappears.
+function renderHintReveal() {
+  const el = document.getElementById("hint-reveal");
+  if (!el) return;
+  const r = game.hintReveal;
+  if (!r) { el.hidden = true; el.textContent = ""; return; }
+  el.hidden = false;
+  el.textContent = `Letter ${r.pos + 1} is “${r.letter}”`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1094,7 +1113,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v25 (header streak: 'Streak' label + hidden at 0)");
+  console.log("Words on Demand — build v26 (hint reveal persists under the button until the next guess)");
   wire();
   renderHomeStats();
   showScreen("home");
