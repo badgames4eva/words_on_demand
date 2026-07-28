@@ -63,20 +63,38 @@ Why the meta tag and not the other two:
   which puts a third-party request in front of a cold TV launch and contradicts the
   "no network egress from the app itself" claim in [STORE_COMPLIANCE.md](STORE_COMPLIANCE.md).
   The meta tag costs zero requests.
-- **ads.txt** — not possible yet. The IAB spec requires it at the **root** domain
-  (`badgames4eva.com/ads.txt`), and only the `wordsondemand.` subdomain has a DNS
-  record; the apex doesn't resolve at all.
+- **ads.txt** — wrong home for it. The IAB spec requires it at the **root** domain, so it
+  belongs to the apex site, not this repo. See below.
 
-Two things to get right:
+**Leave the tag in place permanently.** AdSense re-checks it, and removing it disables
+the site entry.
 
-1. Add the site in AdSense as **`wordsondemand.badgames4eva.com`**, not the apex — the
-   apex can't pass *any* verification method until it resolves.
-2. **Leave the tag in place permanently.** AdSense re-checks it, and removing it
-   disables the site.
+#### The apex is a second, separate repo
 
-Still open: the apex needs to resolve eventually, because the TV app will want
-`app-ads.txt` at the developer-website root (and `ads.txt`, if it's ever needed, can
-only live at the root).
+AdSense verifies the **registrable domain** — `badgames4eva.com` — and groups subdomains
+under it, so the tag it crawled here verified the whole domain. But AdSense's site entry
+is the apex, and its crawler expects the tag served from that exact host. A redirect to
+this subdomain doesn't satisfy it.
+
+That can't be solved from this repo: **GitHub Pages allows one custom domain per
+repository**, and this one is spent on `wordsondemand.badgames4eva.com` — the
+store-listing privacy URL, hard-coded in five files, so it must not move.
+
+So the apex has its own repo, `badgames4eva_site`, holding a one-page landing site (a
+tile per game, each linking to `gamename.badgames4eva.com`) plus:
+
+| File | Why it must be at the root |
+|---|---|
+| `badgames4eva.com/app-ads.txt` | The IAB spec has buyers look for it at the root of the **developer website named in the store listing** — not a subdomain, not a path. It's per-*publisher*, so one file covers every game. |
+| `badgames4eva.com/ads.txt` | Same root requirement, for web pages. |
+
+Consequence for the store listings: **name `https://badgames4eva.com` as the developer /
+publisher website**, or `app-ads.txt` will never be found. The privacy-policy URL stays
+`https://wordsondemand.badgames4eva.com/privacy` — different field, different purpose.
+
+A subdomain's `ads.txt` resolves against its own host, so if a game's *web* build ever
+serves ads it needs its own `ads.txt` here (or a `SUBDOMAIN=` delegation in the root
+file). Today `CONFIG.vastTags` is `null`, so there's nothing to declare.
 
 ### 2. Create a video ad unit
 

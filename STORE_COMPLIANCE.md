@@ -6,6 +6,9 @@ forms. Every answer below is grounded in an audit of what the code actually does
 
 - **Publisher (legal name):** badgames4eva
 - **Support / privacy contact:** badgameseva@gmail.com
+- **Developer / publisher website:** <https://badgames4eva.com>
+  (its own repo, `badgames4eva_site` — it also hosts `app-ads.txt`, which the IAB spec
+  requires at the root of the site named here; see [ADS_SETUP.md](ADS_SETUP.md))
 - **Privacy policy URL:** <https://wordsondemand.badgames4eva.com/privacy>
   (source of truth: [PRIVACY.md](PRIVACY.md), rendered as [privacy.html](privacy.html), and
   mirrored in-app on the `#policy` screen in [index.html](index.html))
@@ -198,6 +201,7 @@ The Amazon developer console asks for the same substance under different labels:
 | Amazon field | Answer |
 |---|---|
 | Privacy policy URL | <https://wordsondemand.badgames4eva.com/privacy> (**required**, not optional) |
+| Developer / publisher website | <https://badgames4eva.com> — **the apex, not the game subdomain.** `app-ads.txt` is looked for at the root of whatever is entered here (see [ADS_SETUP.md](ADS_SETUP.md)); naming the subdomain means it's never found and ad demand suffers. |
 | Does your app collect personal information? | **No** by the app itself; **Yes**, the ad SDK shares device ad IDs |
 | Does your app contain ads? | **Yes** |
 | Advertising ID usage | **Yes**, non-personalized ad serving and fraud prevention |
