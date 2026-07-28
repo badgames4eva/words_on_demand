@@ -20,8 +20,13 @@ stores require in the listing. Source of truth is [PRIVACY.md](PRIVACY.md); keep
 ads declaration, content rating) are in [STORE_COMPLIANCE.md](STORE_COMPLIANCE.md).
 
 In-app, the policy is summarized on the **How to Play & About** screen (the `#howto`
-section) with the URL and support email as plain text — deliberately not links, since a
-remote can't follow one.
+section). The full URL is a **focusable D-pad control** (`#btn-privacy`): OK/Enter asks
+the native host to open it in the device browser (the `open-url` message below), falling
+back to `window.open` in a plain browser. The URL is printed on the button and the
+support email next to it as plain text too, so both stay readable if neither route works.
+That screen must **fit without scrolling** — its only controls are those two buttons, and
+a scrollbar is unreachable by remote — which is what the `@media (max-height: …)` tiers
+in [styles.css](styles.css) exist for (verified `overflow=0` from 800×480 up to 4K).
 
 > **Changing the support email, publisher name, or policy wording?** They're literal
 > strings duplicated across four files (no build step to interpolate them). Follow
@@ -149,6 +154,13 @@ waiting ~400ms for a reply before deciding whether to exit. `nativeBridge` in
 - **Outbound** (`postMessage`, with a `ReactNativeWebView` JSON-string fallback):
   `ready` on load, `back-handled` **synchronously** for every `back` (so the app
   never exits under an open dialog), and `exit` only when the user confirms.
+- **Outbound `open-url`** — the only message carrying a payload:
+  `{ type: "open-url", url: "https://wordsondemand.badgames4eva.com/privacy" }`,
+  sent when the player presses OK on the privacy-policy button. The host should hand
+  the URL to the system browser. If `window.WordsOnDemand` is absent the app falls back
+  to `window.open`; if neither reports success it still shows "Opening the privacy
+  policy in your browser…" rather than an error, because a host that opens the page
+  without acknowledging the message is indistinguishable from one that ignored it.
 
 ## How the prototype maps to the strategy doc
 

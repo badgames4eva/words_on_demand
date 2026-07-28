@@ -91,6 +91,8 @@ const exposer = `
     rewindPress, rewindRelease,
     unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow, pickInDirection,
     imaAvailable,
+    openPrivacyPolicy, resetPrivacyNote,
+    maybeCoachRowWipe, COACH_ROW_WIPE_TIMES,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen,
   };`;

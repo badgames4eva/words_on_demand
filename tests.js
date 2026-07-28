@@ -45,9 +45,12 @@
         hintAvailable = G.hintAvailable, hintDisabledReason = G.hintDisabledReason,
         nextKeyInRow = G.nextKeyInRow, imaAvailable = G.imaAvailable,
         pickInDirection = G.pickInDirection;
+  const maybeCoachRowWipe = G.maybeCoachRowWipe,
+        COACH_ROW_WIPE_TIMES = G.COACH_ROW_WIPE_TIMES;
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
-        getActiveScreen = G.getActiveScreen;
+        getActiveScreen = G.getActiveScreen,
+        openPrivacyPolicy = G.openPrivacyPolicy, resetPrivacyNote = G.resetPrivacyNote;
 
   // ---- scoreGuess: the classic duplicate-letter minefield ----------------
   test("scoreGuess: all correct", () => {
@@ -342,6 +345,43 @@
       eq(nextEditableCol(), 0, "cursor back to column 0");
     });
   });
+  // ---- coach tip: teaching hold-to-wipe ----------------------------------
+  // The gesture is invisible (nothing implies a long press does more), so the tip
+  // is the only in-game teacher. These lock in WHEN it fires and that it stops.
+  function withCoachState(fn) {
+    const saved = store.data.coachRowWipe;
+    try { delete store.data.coachRowWipe; return fn(); }
+    finally {
+      if (saved === undefined) delete store.data.coachRowWipe;
+      else store.data.coachRowWipe = saved;
+    }
+  }
+  test("coach: no tip when the row has nothing pinned to clear", () => {
+    withCoachState(() => {
+      withRound("PLATE", [], () => {          // first row: no greens yet
+        maybeCoachRowWipe();
+        ok(!store.data.coachRowWipe, "tip not spent when it wouldn't make sense");
+      });
+    });
+  });
+  test("coach: tip fires on a row that arrives with carried-down greens", () => {
+    withCoachState(() => {
+      withRound("PLATE", ["PLANE"], () => {   // P/L/A/E carried down and locked
+        ok(game.locked.some(Boolean), "precondition: something is pinned");
+        maybeCoachRowWipe();
+        eq(store.data.coachRowWipe, 1, "tip shown once");
+      });
+    });
+  });
+  test("coach: tip stops after COACH_ROW_WIPE_TIMES (not shown forever)", () => {
+    withCoachState(() => {
+      withRound("PLATE", ["PLANE"], () => {
+        for (let i = 0; i < COACH_ROW_WIPE_TIMES + 5; i++) maybeCoachRowWipe();
+        eq(store.data.coachRowWipe, COACH_ROW_WIPE_TIMES, "capped, then silent");
+      });
+    });
+  });
+
   test("rewind: a quick tap deletes exactly one letter (greens survive)", async () => {
     await withRoundAsync("PLATE", ["PLANE"], async () => {
       typeLetter("T");                 // -> PLATE
@@ -684,6 +724,91 @@
     } finally {
       if (typeof window !== "undefined") window.WordsOnDemand = realApi;
     }
+  });
+
+  // ---- privacy policy: open-url handoff ----------------------------------
+  // Swap in a recording host AND a stubbed window.open, so no test can actually
+  // pop a browser tab open while the suite runs in tests.html.
+  //   host === null   => no native bridge (plain-browser path)
+  //   opener          => what window.open returns; null models a blocked popup
+  function withPolicyEnv(host, opener, fn) {
+    const realApi = (typeof window !== "undefined") ? window.WordsOnDemand : undefined;
+    const realOpen = (typeof window !== "undefined") ? window.open : undefined;
+    const sent = [];
+    if (typeof window !== "undefined") {
+      window.WordsOnDemand = host === null
+        ? undefined
+        : { postMessage: (m) => sent.push(m), onMessage: null };
+      window.open = () => opener;
+    }
+    try {
+      return fn(sent);
+    } finally {
+      if (typeof window !== "undefined") {
+        window.WordsOnDemand = realApi;
+        window.open = realOpen;
+      }
+    }
+  }
+  const policyNote = () =>
+    (typeof document !== "undefined" ? document.getElementById("privacy-note") : null);
+
+  test("privacy: a native host gets open-url with the policy URL", () => {
+    withPolicyEnv({}, null, (sent) => {
+      ok(openPrivacyPolicy(), "reports success when the host accepted it");
+      eq(sent.length, 1, "exactly one message");
+      eq(sent[0].type, "open-url");
+      eq(sent[0].url, CONFIG.privacyUrl, "carries the configured policy URL");
+      ok(/^https:\/\//.test(CONFIG.privacyUrl), "policy URL is https");
+    });
+  });
+
+  // The payload argument must not have changed the wire format of the messages
+  // the native wrapper already implements — those stay exactly { type }.
+  test("privacy: adding a payload didn't change ready/back-handled/exit", () => {
+    withPolicyEnv({}, null, (sent) => {
+      ["ready", "back-handled", "exit"].forEach((t) => nativeBridge.send(t));
+      eq(sent.length, 3, "all three went out");
+      sent.forEach((m, i) => {
+        eq(Object.keys(m).length, 1, `message ${i} has only a type field`);
+        ok(typeof m.type === "string", `message ${i} has a type`);
+      });
+    });
+  });
+
+  test("privacy: no native host falls back to opening a browser tab", () => {
+    withPolicyEnv(null, { closed: false }, (sent) => {
+      ok(openPrivacyPolicy(), "window.open succeeded => success");
+      eq(sent.length, 0, "nothing posted to a native host (there isn't one)");
+    });
+  });
+
+  // Neither route confirmed success. The press must still say something (silence
+  // reads as a broken app) but must NOT claim the device has no browser — a host
+  // that swallows the message looks identical from here, and TVs do have one.
+  test("privacy: an unconfirmed open still reassures, never warns", () => {
+    withPolicyEnv(null, null, () => {
+      ok(!openPrivacyPolicy(), "reports that nothing acknowledged it");
+      const note = policyNote();
+      if (note && typeof note.textContent === "string") {
+        ok(note.textContent.length > 0, "the status line says something");
+        ok(!/can't|cannot|unable/i.test(note.textContent),
+           "no can't-open-a-browser claim (usually false on a TV)");
+      }
+    });
+  });
+
+  test("privacy: re-entering the screen resets the note (no stale message)", () => {
+    withPolicyEnv(null, null, () => {
+      openPrivacyPolicy();                 // leaves a failure message behind
+      resetPrivacyNote();
+      const note = policyNote();
+      if (note && typeof note.innerHTML === "string") {
+        ok(/badgameseva@gmail\.com/.test(note.innerHTML),
+           "back to the default support-email line");
+      }
+      ok(true, "resetPrivacyNote is safe to call");
+    });
   });
 
   // ---- formatDuration ----------------------------------------------------

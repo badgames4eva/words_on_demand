@@ -50,6 +50,11 @@ const CONFIG = {
   // Placeholder seam for Phase 4 remote word lists (ship new dailies without an
   // app update). null = use the built-in ANSWERS pool.
   wordListUrl: null,
+  // Hosted privacy policy, opened from the About & Privacy block. Both stores
+  // require a reachable policy URL; this is the same page linked in the listing.
+  // If it ever moves, update the visible text in index.html to match — the URL
+  // is PRINTED on screen as the fallback for hosts that can't open a browser.
+  privacyUrl: "https://wordsondemand.badgames4eva.com/privacy",
 };
 
 // Convenience aliases so the hot paths stay readable.
@@ -165,9 +170,21 @@ function showScreen(id) {
   // for ads, results, history, or stepping away. No timing pressure during play
   // (STEERING), but we can still record how long a solve actually took.
   if (id === "game") resumeTimer(); else pauseTimer();
-  // Focus first focusable in the new screen — unless a modal is capturing focus.
-  if (!modalEl) focusFirstIn(id);
+  // Focus the screen's preferred control, else the first focusable — unless a
+  // modal is capturing focus.
+  if (!modalEl) {
+    const preferredId = SCREEN_DEFAULT_FOCUS[id];
+    const preferred = preferredId && document.getElementById(preferredId);
+    if (preferred) setFocus(preferred); else focusFirstIn(id);
+  }
 }
+
+// Screens where the first focusable in DOM order isn't the right landing spot.
+// `howto` is a read-first screen: rest on "Got it" so a player who just wants to
+// dismiss it presses OK once, and the policy button takes a deliberate Up press.
+const SCREEN_DEFAULT_FOCUS = {
+  howto: "btn-howto-back",
+};
 
 // ---------------------------------------------------------------------------
 // Solve timer — accumulates active game-screen time into game.solveMs. Paused
@@ -654,6 +671,7 @@ function submitGuess() {
   } else {
     renderCurrentRow(); // show carried-down greens + cursor on the new row
     refreshHintButton(); // new row => a fresh hint becomes available
+    maybeCoachRowWipe(); // first rows with pinned greens: teach hold-to-wipe
   }
   saveProgress();
 }
@@ -1072,6 +1090,69 @@ function refreshHintButton() {
     : "Reveal a letter — watch an ad");
 }
 
+// ---------------------------------------------------------------------------
+// Open the hosted privacy policy in the device browser.
+//
+// A TV player can't type a URL and this WebView has no address bar, so the only
+// way to reach the full policy is to hand it to the platform. Three environments,
+// in order of preference:
+//
+//   1. Native host present → post `open-url` with the URL and let the wrapper
+//      call the platform intent (Fire OS / Vega). The wrapper decides; we can't
+//      know from here whether it succeeded, so we report "opening" optimistically.
+//   2. Plain browser (dev, desktop demo) → window.open in a new tab.
+//   3. Neither works → say so, and leave the URL on screen to read off.
+//
+// It never silently does nothing: on a TV, an unresponsive button is
+// indistinguishable from a broken app, so every path writes to #privacy-note.
+// ---------------------------------------------------------------------------
+// Restore the note to its default (the support email) when the screen is
+// re-entered, so a previous "Opening…" or failure message doesn't linger and
+// describe a press the player didn't make.
+const PRIVACY_NOTE_DEFAULT =
+  'Questions? <span class="url">badgameseva@gmail.com</span>';
+function resetPrivacyNote() {
+  if (typeof document === "undefined") return;
+  const note = document.getElementById("privacy-note");
+  if (!note) return;
+  note.innerHTML = PRIVACY_NOTE_DEFAULT;
+  note.classList.remove("is-warn");
+}
+
+function openPrivacyPolicy() {
+  const url = CONFIG.privacyUrl;
+  const note = typeof document !== "undefined"
+    ? document.getElementById("privacy-note") : null;
+  const say = (text, warn) => {
+    if (!note) return;
+    note.textContent = text;
+    note.classList.toggle("is-warn", !!warn);
+  };
+
+  // 1) Native host. send() reports whether a channel accepted the message.
+  if (nativeBridge.send("open-url", { url })) {
+    say("Opening the privacy policy in your browser…");
+    return true;
+  }
+
+  // 2) Plain browser. noopener so the new tab can't reach back into this one.
+  try {
+    if (typeof window !== "undefined" && typeof window.open === "function") {
+      const w = window.open(url, "_blank", "noopener");
+      if (w) { say("Opened the privacy policy in a new tab."); return true; }
+    }
+  } catch (e) { /* popup blocked or window.open unavailable — fall through */ }
+
+  // 3) Neither route reported success. Say the same reassuring thing anyway: TV
+  //    devices DO have a browser, and a WebView host that swallows the message
+  //    without acknowledging it is indistinguishable here from one that never
+  //    got it — so a "can't open a browser" warning would more often be wrong
+  //    than right, and would read as a broken app on a device where it works.
+  //    The URL stays printed on the button as the always-available fallback.
+  say("Opening the privacy policy in your browser…");
+  return false;
+}
+
 function useHint() {
   if (!hintAvailable()) return;
   const candidates = unrevealedColumns();
@@ -1109,7 +1190,10 @@ function renderHintReveal() {
 // ---------------------------------------------------------------------------
 let toastEl = null;
 let toastTimer = null;
-function toast(msg) {
+// `ms` overrides the dwell time. Validation toasts ("Not in word list") are
+// reactions to something the player just did, so the default is short; a coach
+// tip they didn't ask for needs longer to be read across a room.
+function toast(msg, ms) {
   if (!toastEl) {
     toastEl = document.createElement("div");
     toastEl.className = "toast";
@@ -1118,7 +1202,33 @@ function toast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), ms || 1600);
+}
+
+// ---------------------------------------------------------------------------
+// Coach tips (teach the non-obvious gestures)
+// ---------------------------------------------------------------------------
+// Hold-to-wipe is genuinely useful — it's the only way to abandon a pinned
+// carried-down green and type freely — but a HOLD is invisible: nothing on
+// screen implies that pressing Erase longer does something different. The How to
+// Play screen documents it, and this teaches it in the one moment it's
+// actionable: the first time a row arrives with greens already filled in.
+//
+// Shown a few times, not once. A single tip at the exact moment a new player is
+// busy reading a fresh board is a tip nobody registers; a permanent one is
+// nagging. The count persists in the store so it doesn't restart every launch.
+const COACH_ROW_WIPE_TIMES = 3;
+function maybeCoachRowWipe() {
+  const d = store.data;
+  if ((d.coachRowWipe || 0) >= COACH_ROW_WIPE_TIMES) return;
+  // Only relevant when there is actually something pinned to clear.
+  if (!game.locked.some(Boolean)) return;
+  d.coachRowWipe = (d.coachRowWipe || 0) + 1;
+  store.save();
+  // Delayed so it lands after the tile-flip reveal, not competing with it.
+  setTimeout(() => {
+    toast("Tip: hold Erase to clear the whole row", 3200);
+  }, CONFIG.revealDelayMs);
 }
 
 // ---------------------------------------------------------------------------
@@ -1224,7 +1334,8 @@ function wire() {
   };
   document.getElementById("btn-history").onclick = () => { renderHistory(); showScreen("history"); };
   document.getElementById("btn-history-back").onclick = () => showScreen("home");
-  document.getElementById("btn-howto").onclick = () => showScreen("howto");
+  document.getElementById("btn-howto").onclick = () => { resetPrivacyNote(); showScreen("howto"); };
+  document.getElementById("btn-privacy").onclick = openPrivacyPolicy;
   document.getElementById("btn-howto-back").onclick = () => showScreen("home");
   document.getElementById("btn-back").onclick = () => showScreen("home");
   document.getElementById("btn-hint").onclick = useHint;
@@ -1272,16 +1383,27 @@ const nativeBridge = {
   },
   // Send a typed message to the native host. Prefers the WordsOnDemand channel;
   // falls back to the ReactNativeWebView string channel if that's what's present.
-  send(type) {
-    const msg = { type };
+  //
+  // `extra` merges extra fields into the message (e.g. { url } for `open-url`).
+  // Optional on purpose: every existing caller passes a bare type and the wire
+  // format for those is unchanged — `ready`, `back-handled`, and `exit` still go
+  // out as exactly { type }, so the native contract isn't touched.
+  //
+  // Returns true only if a channel actually accepted the message. Callers that
+  // need to know whether the host is listening (openPrivacyPolicy) use this;
+  // fire-and-forget callers ignore it.
+  send(type, extra) {
+    const msg = extra ? Object.assign({ type }, extra) : { type };
     try {
       const api = this.api;
-      if (api && typeof api.postMessage === "function") { api.postMessage(msg); return; }
+      if (api && typeof api.postMessage === "function") { api.postMessage(msg); return true; }
       if (typeof window !== "undefined" && window.ReactNativeWebView &&
           typeof window.ReactNativeWebView.postMessage === "function") {
         window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+        return true;
       }
     } catch (e) { /* bridge unavailable — behave as a normal web page */ }
+    return false;
   },
 
   // Handle an incoming BACK press. Returns nothing; replies synchronously.
@@ -1363,7 +1485,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v39 (How to Play & About: in-app privacy disclosure)");
+  console.log("Words on Demand — build v40 (About screen legible at 10 feet; policy URL is a D-pad control)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -1380,6 +1502,8 @@ if (typeof module !== "undefined" && module.exports) {
     rewindPress, rewindRelease,
     unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow,
     imaAvailable,
+    openPrivacyPolicy, resetPrivacyNote,
+    maybeCoachRowWipe, COACH_ROW_WIPE_TIMES,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };
 }

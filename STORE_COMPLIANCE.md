@@ -321,7 +321,7 @@ IS privacy.html.
 ### Verify after any change
 
 ```bash
-node run-tests.js                                     # 72/72
+node run-tests.js                                     # 80/80
 grep -rn 'PUBLISHER_NAME\|CONTACT_EMAIL' . --include='*.md' --include='*.html'   # no placeholders left
 curl -s https://wordsondemand.badgames4eva.com/privacy | grep -c 'your-new@email.com'
 ```

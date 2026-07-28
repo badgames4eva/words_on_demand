@@ -289,46 +289,151 @@ body {
 #btn-ad-continue[hidden] { display: none; }
 
 /* ==================== HOW TO PLAY & ABOUT ==================== */
-/* This screen now carries the rules AND the About/Privacy block, so the
-   fixed-height sizes below are clamped against vh: everything must fit on one
-   screen without scrolling. There's only one focusable here ("Got it"), so a
-   scrollbar would be UNREACHABLE by remote — anything pushed off the bottom is
-   effectively gone. Keep it fitting rather than adding scroll. */
-.howto-inner { max-width: 860px; }
-.howto-inner h2 { font-size: clamp(1.9rem, 3.4vh, 3rem); margin-bottom: clamp(.5rem, 1.4vh, 1.5rem); }
+/* Sizes scale with BOTH viewport axes (vmin) rather than rem alone, so the
+   screen is legible on a 10-foot TV and still fits a short laptop window.
+   An earlier version clamped against vh only, which shrank the text to ~1rem on
+   a 720p TV — unreadable from a couch, the exact failure the 10-foot rule
+   exists to prevent. The floors below are what guarantee couch legibility;
+   don't lower them to buy vertical room. Trim COPY instead — the About text is
+   deliberately terse for this reason. */
+.howto-inner { max-width: 74rem; width: 100%; }
+.howto-inner h2 {
+  font-size: clamp(2.2rem, 4.4vmin, 3.4rem);
+  margin-bottom: clamp(.6rem, 1.6vmin, 1.4rem);
+}
 .howto-list {
   list-style: none;
-  font-size: clamp(1.05rem, 1.9vh, 1.5rem);
-  line-height: clamp(1.6, 3.1vh, 2.4);
+  font-size: clamp(1.3rem, 2.3vmin, 1.9rem);
+  line-height: 1.75;
 }
-.swatch { display: inline-block; width: 1.4rem; height: 1.4rem; border-radius: 4px; vertical-align: middle; margin-right: .3rem; }
+.swatch {
+  display: inline-block; border-radius: 4px; vertical-align: middle; margin-right: .4rem;
+  width: clamp(1.1rem, 2.1vmin, 1.6rem); height: clamp(1.1rem, 2.1vmin, 1.6rem);
+}
 .swatch.correct { background: var(--correct); }
 .swatch.present { background: var(--present); }
 .swatch.absent { background: var(--absent); }
-.howto-inner .btn { margin-top: clamp(.8rem, 2vh, 2rem); }
 
 /* ---- About & Privacy (in the How to Play screen) ----
-   Where the store-required privacy disclosure lives in-app. Deliberately quieter
-   than the rules above (muted, smaller): a player came here to learn the game,
-   not to read a policy — but a reviewer and a curious player can both find it. */
+   Where the store-required privacy disclosure lives in-app. Quieter than the
+   rules above, but NOT small: a privacy notice nobody can read from the couch
+   isn't a disclosure. Body copy tracks the rules text closely in size. */
 .about-head {
-  font-size: clamp(1.2rem, 2.2vh, 1.8rem); font-weight: 700;
-  margin: clamp(.9rem, 2.2vh, 2rem) 0 clamp(.3rem, .8vh, .7rem);
-  padding-top: clamp(.7rem, 1.8vh, 1.6rem);
+  font-size: clamp(1.6rem, 2.9vmin, 2.3rem); font-weight: 700;
+  margin: clamp(1rem, 2.4vmin, 2rem) 0 clamp(.4rem, 1vmin, .8rem);
+  padding-top: clamp(.8rem, 2vmin, 1.6rem);
   border-top: 2px solid var(--absent);
 }
 .about-text {
-  font-size: clamp(.9rem, 1.6vh, 1.2rem);
-  line-height: 1.5; color: var(--muted);
-  margin-bottom: clamp(.3rem, .8vh, .7rem);
+  font-size: clamp(1.15rem, 2.05vmin, 1.65rem);
+  line-height: 1.55; color: var(--muted);
+  margin-bottom: clamp(.35rem, 1vmin, .8rem);
+  max-width: 62rem;
 }
 .about-text strong { color: var(--text); }
-/* The URL and email are read off the screen and typed on a phone — never
-   tapped. Monospace + letter-spacing so characters are unambiguous at 10 feet
-   (rn vs m, l vs 1), and nowrap so a URL never breaks across lines mid-domain. */
-.about-url .url, .about-contact .url {
+
+/* Row holding the policy-opener button. Wraps on a narrow window so it's never
+   clipped off-screen. */
+.about-actions {
+  display: flex; flex-wrap: wrap; align-items: stretch;
+  gap: clamp(.7rem, 1.8vmin, 1.4rem);
+  margin-top: clamp(.9rem, 2.2vmin, 1.8rem);
+}
+/* "Got it" sits alone at the bottom — the way out, and this screen's default
+   focus. Separated from the policy button so an accidental extra OK press can't
+   dismiss the screen when the player meant to open the policy. */
+.about-dismiss { margin-top: clamp(.8rem, 2vmin, 1.6rem); }
+/* The policy button stacks a label over the URL, so it overrides .btn's single
+   centered line. The URL is shown even though the button opens the page — a TV
+   may have no browser to open, and then the text is the only way to reach it. */
+.btn.btn-policy {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: .2rem; text-align: left;
+  padding: clamp(.7rem, 1.8vmin, 1.1rem) clamp(1.1rem, 2.4vmin, 1.9rem);
+  font-size: inherit;
+}
+.policy-label { font-size: clamp(1.15rem, 2.05vmin, 1.6rem); font-weight: 600; }
+/* Monospace + letter-spacing so characters stay unambiguous at 10 feet
+   (rn vs m, l vs 1); nowrap so a URL never breaks mid-domain. */
+.policy-url {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: clamp(.95rem, 1.65vmin, 1.25rem); font-weight: 400;
+  color: var(--accent); letter-spacing: .02em; white-space: nowrap;
+}
+/* Focused, the ghost button's border turns the focus-ring yellow, which would
+   leave the accent-blue URL fighting it — lift it to full-contrast instead. */
+.btn.btn-policy.is-focused .policy-url { color: var(--text); }
+
+/* Status line under the buttons: the support email by default, replaced by the
+   open-in-browser confirmation or failure notice. */
+.about-note {
+  font-size: clamp(1.05rem, 1.85vmin, 1.4rem);
+  color: var(--muted);
+  margin-top: clamp(.7rem, 1.8vmin, 1.4rem);
+}
+.about-note .url {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color: var(--accent); letter-spacing: .02em; white-space: nowrap;
+}
+/* Failure state — the host couldn't open a browser. Warm, not alarming. */
+.about-note.is-warn { color: var(--present); }
+
+/* Short viewports only. A 720p TV is 720px tall, so this can only be a small
+   laptop/browser window — never the 10-foot case. Reclaim vertical room from
+   padding and leading (not from font size, which is what keeps the TV legible)
+   so the block still fits whole. It has to FIT rather than scroll: this screen's
+   only controls are the two buttons, so a scrollbar would be unreachable by a
+   D-pad and the clipped text unrecoverable. */
+@media (max-height: 700px) {
+  #howto { padding-top: 1.5vh; padding-bottom: 1.5vh; }
+  .howto-inner h2 { margin-bottom: .3rem; }
+  .howto-list { line-height: 1.4; }
+  .about-head { margin-top: .6rem; padding-top: .5rem; }
+  .about-text { line-height: 1.4; margin-bottom: .25rem; }
+  .about-actions { margin-top: .6rem; }
+  .about-note { margin-top: .5rem; }
+  .about-dismiss { margin-top: .5rem; }
+}
+
+/* Tiny windows (below 720p — a dev/demo browser window, never a TV). Spacing
+   alone can't buy enough room here, so this tier is the one place font size is
+   allowed to drop: a 560px-tall viewport is by definition not being viewed from
+   a couch. Keeping the block whole matters more than type scale, because there
+   is still no way to scroll it with a remote. */
+@media (max-height: 560px) {
+  #howto { padding-top: .9vh; padding-bottom: .9vh; }
+  .howto-inner h2 { font-size: 1.6rem; }
+  .howto-list { font-size: .88rem; line-height: 1.2; }
+  .about-head { font-size: 1.3rem; margin-top: .5rem; padding-top: .45rem; }
+  .about-text { font-size: .95rem; line-height: 1.3; margin-bottom: .15rem; }
+  .policy-label { font-size: .95rem; }
+  .policy-url { font-size: .85rem; }
+  .about-note { font-size: .9rem; margin-top: .3rem; }
+  .about-actions { margin-top: .4rem; }
+  .about-dismiss { margin-top: .3rem; }
+  .howto-inner h2 { margin-bottom: .2rem; }
+  .btn.btn-policy { padding: .45rem .9rem; }
+  #howto .btn { padding: .5rem 1.3rem; font-size: 1.05rem; }
+}
+
+/* Last resort — a viewport shorter than a phone in landscape. Nothing on a TV is
+   ever this size. Verified no-overflow down to an 800×480 window (393px of usable
+   height); below that it does overflow, and that's accepted — the copy simply
+   cannot be legible at that size, so there is nothing to protect. */
+@media (max-height: 440px) {
+  #howto { padding-top: .8vh; padding-bottom: .8vh; }
+  .howto-inner h2 { font-size: 1.35rem; }
+  .howto-list { font-size: .82rem; line-height: 1.2; }
+  .about-head { font-size: 1.1rem; margin-top: .4rem; padding-top: .35rem; }
+  .about-text { font-size: .85rem; line-height: 1.25; margin-bottom: .1rem; }
+  .policy-label { font-size: .85rem; }
+  .policy-url { font-size: .78rem; }
+  .about-note { font-size: .8rem; margin-top: .25rem; }
+  .about-actions { margin-top: .3rem; }
+  .about-dismiss { margin-top: .25rem; }
+  .btn.btn-policy { padding: .35rem .8rem; }
+  .swatch { width: .85rem; height: .85rem; }
+  #howto .btn { padding: .4rem 1.1rem; font-size: .95rem; }
 }
 
 /* ============================ HISTORY ============================ */
