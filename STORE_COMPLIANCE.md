@@ -334,7 +334,7 @@ to include it once, so this is manual — and a store reviewer can compare them:
 7. Re-check the answers in this document — a policy change usually means a Data Safety
    change, and the two must agree.
 8. Push, then confirm <https://wordsondemand.badgames4eva.com/privacy> serves the new text.
-   Pages takes ~1–2 min.
+   Cloudflare redeploys in ~1 min.
 
 ### Verify after any change
 

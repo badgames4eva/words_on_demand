@@ -11,8 +11,9 @@ dictionary (zero content-licensing cost).
 > rationale behind the genre choice, remote-first constraints, monetization rules,
 > COPPA guardrail, and launch sequencing.
 
-**Live:** <https://wordsondemand.badgames4eva.com/> (GitHub Pages, custom domain — the
-`CNAME` file pins it; don't delete it or a push reverts to the `*.github.io` URL).
+**Live:** <https://wordsondemand.badgames4eva.com/> — served by **Cloudflare** from this
+repo's `main` branch via Cloudflare's Git integration. See [Deploy](#deploy) for the full
+picture, including the now-inert `CNAME` file left over from the old GitHub Pages setup.
 
 **Privacy policy:** <https://wordsondemand.badgames4eva.com/privacy> — the URL both
 stores require in the listing. Source of truth is [PRIVACY.md](PRIVACY.md); keep
@@ -80,11 +81,17 @@ passing. **`node run-tests.js` is the gate before a push**, so run that one.
 
 ## Deploy
 
-Hosted on **GitHub Pages**, served straight from `main` (no `gh-pages` branch, no
-build step) at the custom domain above. **Pushing to `main` is the deploy** — Pages
-rebuilds in ~1–2 min. Every release bumps a version so TVs and browsers don't serve
-stale cached assets; the on-screen build badge (bottom-right) is how you confirm the
-new code actually went live.
+Hosted on **Cloudflare**, served straight from `main` (no `gh-pages` branch, no build
+step) at the custom domain above, via Cloudflare's **Connect to Git** integration.
+**Pushing to `main` is the deploy** — Cloudflare redeploys in ~1 min. Every release bumps
+a version so TVs and browsers don't serve stale cached assets; the on-screen build badge
+(bottom-right) is how you confirm the new code actually went live.
+
+> **How we can tell it's Cloudflare and not GitHub Pages:** every response carries
+> `server: cloudflare` and a 404 returns a **zero-byte** body (Cloudflare's static-asset
+> serving), where GitHub Pages returns its own styled HTML 404. The site ran on GitHub
+> Pages until ~build v33 and was migrated to Cloudflare; the leftovers are documented at
+> the end of this section.
 
 To cut a release:
 
@@ -102,13 +109,25 @@ To cut a release:
 4. **Confirm live**: hard-refresh <https://wordsondemand.badgames4eva.com/>
    (Cmd+Shift+R to beat the cache) and check the badge shows the new `vN`.
 
-The `CNAME` file at the repo root pins the custom domain — leave it in place; deleting
-it reverts the site to the `*.github.io` URL on the next push. Only bump the version
-for player-facing asset changes (HTML/CSS/JS); doc-only commits don't need it.
+Only bump the version for player-facing asset changes (HTML/CSS/JS); doc-only commits
+don't need it.
+
+### Leftovers from the GitHub Pages era — safe, but know they're there
+
+Cloudflare now owns the custom domain, so two GitHub Pages artifacts are inert:
+
+- **The `CNAME` file** at the repo root. GitHub Pages read it to claim the custom domain;
+  Cloudflare ignores it entirely and gets its domain from the dashboard. It's harmless to
+  leave and harmless to delete — Cloudflare won't notice either way. (Contrast with the
+  `badgames4eva_site` repo, which never had one.)
+- **GitHub Pages itself may still be enabled** on the repo: `badgames4eva.github.io/words_on_demand/`
+  still `301`s to the custom domain. That's the old Pages CNAME config, not Cloudflare.
+  It does no harm because Cloudflare is what actually answers `wordsondemand.badgames4eva.com`,
+  but if you want a single source of truth, disable Pages in the repo's Settings → Pages.
 
 ### Load performance
 
-Origin is GitHub Pages behind Cloudflare. What's already handled in this repo:
+Origin is Cloudflare (static assets served from `main`). What's already handled in this repo:
 
 - **Deferred scripts** — `words.js`/`game.js` carry `defer`, so neither blocks HTML
   parsing. They keep document order and run before `DOMContentLoaded`, which is what
@@ -122,11 +141,10 @@ Origin is GitHub Pages behind Cloudflare. What's already handled in this repo:
   (words.js 119 KB); real browsers always send one and get ~42 KB. Measure with
   `curl -sSI -H 'Accept-Encoding: br, gzip' <url> | grep -i content-encoding`.
 
-**Not fixable from this repo — needs a Cloudflare dashboard change.** GitHub Pages
-hard-codes `cache-control: public, max-age=0, must-revalidate` on every asset and
-supports no header config, so the browser revalidates all three files on every load and
-caching never helps. Since assets are already cache-busted with `?v=NN`, add a
-Cloudflare **Cache Rule**:
+**Not fixable from a code change — needs a Cloudflare dashboard change.** Assets still go
+out with `cache-control: public, max-age=0, must-revalidate` (verified on `game.js`), so
+the browser revalidates all three files on every load and caching never helps. Since
+assets are already cache-busted with `?v=NN`, add a Cloudflare **Cache Rule**:
 
 - **When** `http.request.uri.path` ends with `.js` or `.css`
 - **Then** Cache eligibility: *Eligible for cache*; Edge TTL + **Browser TTL: 1 year**
