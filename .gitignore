@@ -11,3 +11,10 @@
 
 # Dependencies (none today — vanilla JS — but future-proofing the Android/tooling phases)
 node_modules/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
