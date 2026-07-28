@@ -7,7 +7,8 @@ forms. Every answer below is grounded in an audit of what the code actually does
 - **Publisher (legal name):** badgames4eva
 - **Support / privacy contact:** badgameseva@gmail.com
 - **Privacy policy URL:** <https://wordsondemand.badgames4eva.com/privacy>
-  (source of truth: [PRIVACY.md](PRIVACY.md), rendered as [privacy.html](privacy.html))
+  (source of truth: [PRIVACY.md](PRIVACY.md), rendered as [privacy.html](privacy.html), and
+  mirrored in-app on the `#policy` screen in [index.html](index.html))
 - **Target audience:** general audience, **not** child-directed
   (a child-directed classification forfeits ad revenue under COPPA — see [STEERING.md](STEERING.md))
 - **Ad targeting:** **non-personalized only**
@@ -162,8 +163,8 @@ near-identical set.
 | Sharing of user location | **No** |
 | Sharing of personal information with third parties | **Yes** — ad identifiers only, for advertising and fraud prevention (matches the Data Safety answers above) |
 | Does the app contain ads? | **Yes** |
-| Does the app link to external websites? | **No** in-app links; the privacy policy URL is in the store listing |
-| Miscellaneous — unrestricted internet access | **No** — the app opens no browser and has no URL entry |
+| Does the app link to external websites? | **No** — the privacy policy renders inside the app on its own screen; nothing navigates out. (The policy button is an `<a href>` only as a no-JS fallback; with JS alive it never leaves the app.) |
+| Miscellaneous — unrestricted internet access | **No** — the app has no URL entry and no browsing surface |
 
 **Expected outcome:** the lowest or near-lowest rating band (ESRB *Everyone*, PEGI *3*,
 USK *0*, "Rated for 3+"), with the *Contains ads* / *shares info with third parties*
@@ -257,8 +258,8 @@ notices.
 |---|---|
 | Support / privacy email | [PRIVACY.md](PRIVACY.md), [privacy.html](privacy.html), [index.html](index.html), this file |
 | Publisher name | [PRIVACY.md](PRIVACY.md), [privacy.html](privacy.html), [index.html](index.html), this file |
-| Effective / Last updated date | [PRIVACY.md](PRIVACY.md), [privacy.html](privacy.html) |
-| Policy body text | [PRIVACY.md](PRIVACY.md) and [privacy.html](privacy.html) (full), [index.html](index.html) (short summary in the `#howto` About block) |
+| Effective / Last updated date | [PRIVACY.md](PRIVACY.md), [privacy.html](privacy.html), [index.html](index.html) (`.policy-dates` on the `#policy` screen) |
+| Policy body text | [PRIVACY.md](PRIVACY.md) and [privacy.html](privacy.html) (full), [index.html](index.html) (full text again on the `#policy` screen, plus a short summary in the `#howto` About block) |
 
 Current values: **badgames4eva** / **badgameseva@gmail.com**
 
@@ -304,30 +305,46 @@ IS privacy.html.
 
 ### Changing the policy text itself
 
+The policy now exists in **three** places, all of which must agree. There's no build step
+to include it once, so this is manual — and a store reviewer can compare them:
+
+| File | What it is |
+|---|---|
+| [PRIVACY.md](PRIVACY.md) | Source of truth. Edit here first. |
+| [privacy.html](privacy.html) | The hosted page at the store-listing URL. Full text. |
+| `#policy` section of [index.html](index.html) | The in-app screen a player actually reads. Condensed but must not contradict the other two. |
+
 1. Edit [PRIVACY.md](PRIVACY.md) — treat it as the source of truth.
-2. Mirror the change into [privacy.html](privacy.html). They are intentionally separate
-   files (no build step), so this is manual. The HTML uses curly quotes and `&nbsp;`;
-   match the surrounding style.
-3. **Bump the "Last updated" date in both.** Leave "Effective date" alone unless the change
-   is material (new data collected, personalized ads, analytics added) — for those, set a
-   future effective date and ship the notice before the behavior changes.
-4. If the change affects the in-app summary (accounts, storage, ad personalization), update
-   the *About & Privacy* block in [index.html](index.html) too, and bump the build version.
-5. Re-check the answers in this document — a policy change usually means a Data Safety
+2. Mirror the change into [privacy.html](privacy.html). The HTML uses curly quotes and
+   `&nbsp;`; match the surrounding style.
+3. Mirror it into the `#policy` section of [index.html](index.html). This copy is shorter
+   on purpose (it's read from a couch), so carry over the *substance*, not the wording —
+   but never let it say less than the hosted page about what data leaves the device.
+4. **Bump the "Last updated" date in all three** — including the `.policy-dates` line on
+   the in-app screen. Leave "Effective date" alone unless the change is material (new data
+   collected, personalized ads, analytics added) — for those, set a future effective date
+   and ship the notice before the behavior changes.
+5. If the change affects the in-app *summary* (accounts, storage, ad personalization),
+   update the *About & Privacy* block in [index.html](index.html) too.
+6. Editing index.html is a **release**: bump the build version in all four places.
+7. Re-check the answers in this document — a policy change usually means a Data Safety
    change, and the two must agree.
-6. Push, then confirm <https://wordsondemand.badgames4eva.com/privacy> serves the new text.
+8. Push, then confirm <https://wordsondemand.badgames4eva.com/privacy> serves the new text.
    Pages takes ~1–2 min.
 
 ### Verify after any change
 
 ```bash
-node run-tests.js                                     # 80/80
+node run-tests.js                                     # 84/84
 grep -rn 'PUBLISHER_NAME\|CONTACT_EMAIL' . --include='*.md' --include='*.html'   # no placeholders left
+grep -c 'Last updated' PRIVACY.md privacy.html index.html   # the date lives in all three
 curl -s https://wordsondemand.badgames4eva.com/privacy | grep -c 'your-new@email.com'
 ```
 
-Then open the **How to Play & About** screen in the app and read the block — it's the one
-copy of this text a player actually sees.
+Then open **How to Play & About** in the app, read the summary, and press *Read Full
+Privacy Policy* — that opens the in-app `#policy` screen, which is the copy a player
+actually reads. Scroll it to the end with Down to confirm nothing is clipped and that the
+D-pad reaches **Done**.
 
 ## When to revisit this document
 

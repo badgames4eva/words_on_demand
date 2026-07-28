@@ -19,14 +19,24 @@ stores require in the listing. Source of truth is [PRIVACY.md](PRIVACY.md); keep
 [privacy.html](privacy.html) in sync with it. Store questionnaire answers (Data Safety,
 ads declaration, content rating) are in [STORE_COMPLIANCE.md](STORE_COMPLIANCE.md).
 
-In-app, the policy is summarized on the **How to Play & About** screen (the `#howto`
-section). The full URL is a **focusable D-pad control** (`#btn-privacy`): OK/Enter asks
-the native host to open it in the device browser (the `open-url` message below), falling
-back to `window.open` in a plain browser. The URL is printed on the button and the
-support email next to it as plain text too, so both stay readable if neither route works.
-That screen must **fit without scrolling** — its only controls are those two buttons, and
-a scrollbar is unreachable by remote — which is what the `@media (max-height: …)` tiers
-in [styles.css](styles.css) exist for (verified `overflow=0` from 800×480 up to 4K).
+In-app, the policy is summarized on the **How to Play & About** screen (`#howto`), and
+the **full policy renders inside the app** on the `#policy` screen — no browser handoff.
+That was a deliberate reversal: opening the device browser works on Fire OS, but the
+browser doesn't share app data with the WebView, it covers the app, and getting back is
+the wrapper's problem. `#btn-privacy` is still a real `<a href>` to the hosted copy so a
+JS-less press degrades to the browser rather than doing nothing; `showPolicy()` cancels
+that navigation whenever JS is alive.
+
+Two layout rules there, both remote-driven:
+
+- `#howto` must **fit without scrolling** — its only controls are its two buttons, so a
+  scrollbar would be unreachable. That's what the `@media (max-height: …)` tiers in
+  [styles.css](styles.css) are for (verified `overflow=0` from 800×480 up to 4K).
+- `#policy` is the one screen that **does** scroll, because the scrolling region is
+  itself the focused control: `#policy-doc` carries `.focusable`, and Up/Down page it
+  (`scrollPolicy` in [game.js](game.js)). At either end `scrollPolicy` returns false and
+  the press falls through to normal focus movement, so Down reaches **Done** and the
+  D-pad can never be trapped in the text. BACK/Done return to About, not home.
 
 > **Changing the support email, publisher name, or policy wording?** They're literal
 > strings duplicated across four files (no build step to interpolate them). Follow
@@ -149,18 +159,23 @@ waiting ~400ms for a reply before deciding whether to exit. `nativeBridge` in
 [game.js](game.js) implements the SPA side (guarded to a no-op in a plain browser):
 
 - **Inbound** (`window.WordsOnDemand.onMessage` or a `wod:message` event):
-  `back` → close an open dialog, else go back a screen, else (on home) raise the
-  exit-confirmation dialog; `pause`/`resume` → stop/start the solve timer.
+  `back` → close an open dialog, else go back a screen (the policy screen steps back to
+  About, everything else to home), else (on home) raise the exit-confirmation dialog;
+  `pause`/`resume` → stop/start the solve timer.
 - **Outbound** (`postMessage`, with a `ReactNativeWebView` JSON-string fallback):
   `ready` on load, `back-handled` **synchronously** for every `back` (so the app
   never exits under an open dialog), and `exit` only when the user confirms.
-- **Outbound `open-url`** — the only message carrying a payload:
-  `{ type: "open-url", url: "https://wordsondemand.badgames4eva.com/privacy" }`,
-  sent when the player presses OK on the privacy-policy button. The host should hand
-  the URL to the system browser. If `window.WordsOnDemand` is absent the app falls back
-  to `window.open`; if neither reports success it still shows "Opening the privacy
-  policy in your browser…" rather than an error, because a host that opens the page
-  without acknowledging the message is indistinguishable from one that ignored it.
+
+`nativeBridge.send()` accepts an optional payload (`send("open-url", { url })`) but
+nothing in the app sends one today — the policy renders in-app instead, so the wrapper
+needs no URL-opening support. The messages above still go out as exactly `{ type }`.
+
+**Wrapper note — don't let the WebView navigate.** Fire OS's default for a clicked link
+in a WebView is to hand it to whatever app handles URLs (the browser). We rely on that
+only as the no-JS fallback for `#btn-privacy`. A wrapper that wants links kept in-app
+should supply a `WebViewClient` overriding `shouldOverrideUrlLoading()` (Fire OS) or set
+`onShouldStartLoadWithRequest` (Vega) — for a SPA that never navigates, neither is
+required.
 
 ## How the prototype maps to the strategy doc
 

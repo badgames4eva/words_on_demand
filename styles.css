@@ -69,6 +69,11 @@ body {
   border-radius: var(--radius);
   padding: 1.1rem 2.4rem;
   cursor: pointer;
+  /* text-decoration/display are here because #btn-privacy is an <a>, not a
+     <button> (see index.html) — without them a link styled as a button shows an
+     underline and lays out inline. */
+  text-decoration: none;
+  display: inline-block;
   transition: transform .12s ease, background .12s ease, border-color .12s ease;
 }
 .btn-primary {
@@ -344,8 +349,9 @@ body {
    dismiss the screen when the player meant to open the policy. */
 .about-dismiss { margin-top: clamp(.8rem, 2vmin, 1.6rem); }
 /* The policy button stacks a label over the URL, so it overrides .btn's single
-   centered line. The URL is shown even though the button opens the page — a TV
-   may have no browser to open, and then the text is the only way to reach it. */
+   centered line. The URL is shown even though the button opens the page — the
+   text is the only route left if the handoff is blocked, and it's what a player
+   types on a phone. */
 .btn.btn-policy {
   display: flex; flex-direction: column; align-items: flex-start;
   gap: .2rem; text-align: left;
@@ -377,6 +383,69 @@ body {
 }
 /* Failure state — the host couldn't open a browser. Warm, not alarming. */
 .about-note.is-warn { color: var(--present); }
+
+/* ==================== FULL PRIVACY POLICY (in-app) ====================
+   The one screen in the app that is deliberately SCROLLABLE. Everywhere else
+   must fit, because a scrollbar can't be reached with a remote — here the
+   scrolling region itself is the focused control (#policy-doc is .focusable and
+   Up/Down page it in JS), which is what makes it remote-operable.
+
+   Body copy is smaller than the About summary and that's intentional: this is
+   reference text a player opts into reading, not the 10-foot glance layer. It's
+   still well above the ~1rem floor that made the About screen unreadable. */
+#policy { justify-content: flex-start; padding-top: 3vh; padding-bottom: 3vh; }
+.policy-inner {
+  max-width: 74rem; width: 100%;
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 0;                    /* let the doc flex-shrink instead of overflowing */
+}
+.policy-title { font-size: clamp(1.9rem, 3.8vmin, 3rem); margin-bottom: .2rem; }
+.policy-dates {
+  font-size: clamp(.95rem, 1.6vmin, 1.2rem); color: var(--muted);
+  margin-bottom: clamp(.6rem, 1.6vmin, 1.2rem); text-align: center;
+}
+.policy-dates .url, .policy-doc .url {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--accent); letter-spacing: .02em;
+}
+/* The scroll region. A visible border + inset background make the scrollable
+   area's edges obvious, so a player can tell there is more text below. */
+.policy-doc {
+  width: 100%; flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain;
+  background: var(--panel); border: 3px solid transparent;
+  border-radius: var(--radius);
+  padding: clamp(1rem, 2.4vmin, 2rem) clamp(1.2rem, 3vmin, 2.4rem);
+  text-align: left;
+  font-size: clamp(1.05rem, 1.85vmin, 1.45rem);
+  line-height: 1.6; color: var(--muted);
+  /* Hide the native scrollbar: it's decoration we can't use (unreachable by
+     D-pad) and on some TV browsers it renders as a chunky overlay. */
+  scrollbar-width: none;
+}
+.policy-doc::-webkit-scrollbar { display: none; }
+.policy-doc h3 {
+  color: var(--text); font-size: clamp(1.25rem, 2.2vmin, 1.7rem);
+  margin: clamp(1.1rem, 2.6vmin, 2rem) 0 clamp(.3rem, .8vmin, .6rem);
+}
+.policy-doc h3:first-child { margin-top: 0; }
+.policy-doc p { margin: 0 0 clamp(.5rem, 1.3vmin, 1rem); }
+.policy-doc ul { margin: 0 0 clamp(.5rem, 1.3vmin, 1rem); padding-left: 1.4em; }
+.policy-doc li { margin-bottom: clamp(.25rem, .7vmin, .5rem); }
+.policy-doc strong { color: var(--text); }
+/* Focus ring on the doc reads as "this is what Up/Down drives now". Same ring as
+   every other control (consistency is the whole 10-foot focus contract), but no
+   scale transform — magnifying a text block would reflow it mid-read. */
+.policy-doc.focusable.is-focused {
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 6px rgba(255, 211, 77, .35), 0 12px 30px rgba(0,0,0,.4);
+  transform: none;
+  background: var(--bg-2);
+}
+.policy-hint {
+  font-size: clamp(.9rem, 1.55vmin, 1.15rem); color: var(--muted);
+  margin-top: clamp(.5rem, 1.4vmin, 1rem); opacity: .85;
+}
 
 /* Short viewports only. A 720p TV is 720px tall, so this can only be a small
    laptop/browser window — never the 10-foot case. Reclaim vertical room from

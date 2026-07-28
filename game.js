@@ -182,8 +182,11 @@ function showScreen(id) {
 // Screens where the first focusable in DOM order isn't the right landing spot.
 // `howto` is a read-first screen: rest on "Got it" so a player who just wants to
 // dismiss it presses OK once, and the policy button takes a deliberate Up press.
+// `policy` lands on the document itself, because Up/Down there mean "scroll" —
+// the player asked to read, so the D-pad should already be driving the text.
 const SCREEN_DEFAULT_FOCUS = {
   howto: "btn-howto-back",
+  policy: "policy-doc",
 };
 
 // ---------------------------------------------------------------------------
@@ -387,6 +390,19 @@ document.addEventListener("keydown", (e) => {
   // Ad screen swallows input until countdown finishes.
   if (activeScreen === "ad") { e.preventDefault(); return; }
 
+  // On the policy screen, Up/Down scroll the document while the doc itself holds
+  // focus — that IS the remote's scrollbar. Once it can't move any further,
+  // fall through to normal focus movement so Down reaches "Done" and Up can't
+  // strand the player inside the text.
+  if (activeScreen === "policy" && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    const dir = e.key === "ArrowDown" ? "down" : "up";
+    if (focusedEl && focusedEl.id === "policy-doc" && scrollPolicy(dir)) {
+      refreshPolicyHint();
+      e.preventDefault();
+      return;
+    }
+  }
+
   switch (e.key) {
     case "ArrowUp":    inputMode = "dpad"; moveFocus("up");    e.preventDefault(); break;
     case "ArrowDown":  inputMode = "dpad"; moveFocus("down");  e.preventDefault(); break;
@@ -450,6 +466,10 @@ function handleBack() {
       game.cells.some((ch, i) => ch !== "" && !game.locked[i]);
     if (hasEditable) removeLetter();
     else showScreen("home");
+  } else if (activeScreen === "policy") {
+    // Policy is the only nested screen: BACK returns to About, not home, so the
+    // player lands where they pressed the button rather than being kicked out.
+    showScreen("howto");
   } else if (activeScreen === "howto" || activeScreen === "result") {
     showScreen("home");
   }
@@ -1091,24 +1111,81 @@ function refreshHintButton() {
 }
 
 // ---------------------------------------------------------------------------
-// Open the hosted privacy policy in the device browser.
+// The full privacy policy, rendered IN-APP on the #policy screen.
 //
-// A TV player can't type a URL and this WebView has no address bar, so the only
-// way to reach the full policy is to hand it to the platform. Three environments,
-// in order of preference:
+// Handing the URL to the device browser was the first attempt and it's a worse
+// experience on a TV: the Fire OS browser doesn't share app data with the
+// WebView, it covers the app entirely, and getting back is the wrapper's problem
+// rather than ours. So the policy text lives in index.html and we just show it.
 //
-//   1. Native host present → post `open-url` with the URL and let the wrapper
-//      call the platform intent (Fire OS / Vega). The wrapper decides; we can't
-//      know from here whether it succeeded, so we report "opening" optimistically.
-//   2. Plain browser (dev, desktop demo) → window.open in a new tab.
-//   3. Neither works → say so, and leave the URL on screen to read off.
+// #btn-privacy is nonetheless a real <a href> to the hosted copy, so the press
+// degrades safely: if this JS never wired up, a Fire OS WebView with no
+// WebViewClient hands a clicked link to the system URL handler by itself and the
+// player still reaches the policy. showPolicy() cancels that navigation whenever
+// JS is alive, which is the normal case.
 //
-// It never silently does nothing: on a TV, an unresponsive button is
-// indistinguishable from a broken app, so every path writes to #privacy-note.
+// The doc scrolls by D-pad. #policy-doc is itself .focusable and Up/Down move it
+// a screenful at a time (see the `policy` branch in the keydown handler): a
+// scrollbar is unreachable with a remote, so the scrolling region has to BE the
+// focused control. At the bottom, Down releases focus to the Done button so the
+// D-pad is never trapped.
 // ---------------------------------------------------------------------------
-// Restore the note to its default (the support email) when the screen is
-// re-entered, so a previous "Opening…" or failure message doesn't linger and
-// describe a press the player didn't make.
+
+// How much of a screenful one Up/Down press moves. Deliberately less than 100%:
+// a full-page jump loses the line you were reading, and on a TV there's no
+// pointer to re-find your place with.
+const POLICY_SCROLL_FRACTION = 0.8;
+
+function policyDoc() {
+  return typeof document !== "undefined" ? document.getElementById("policy-doc") : null;
+}
+
+// Enter the in-app policy screen. `ev` is the anchor's click event, cancelled so
+// the link doesn't navigate away from the app.
+function showPolicy(ev) {
+  if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+  const doc = policyDoc();
+  // Always start at the top: re-entering mid-document would look like the app
+  // dropped the player somewhere random.
+  if (doc) { try { doc.scrollTop = 0; } catch (e) { /* stub DOM in tests */ } }
+  showScreen("policy");
+  refreshPolicyHint();
+  return true;
+}
+
+// Scroll the policy doc by one step. Returns false when it can't move any
+// further in that direction, which is the caller's cue to let focus move on
+// instead (so the D-pad is never stuck inside the text).
+function scrollPolicy(dir) {
+  const doc = policyDoc();
+  if (!doc) return false;
+  const h = doc.clientHeight || 0;
+  const max = (doc.scrollHeight || 0) - h;
+  if (max <= 1) return false;               // nothing to scroll (short doc / stub)
+  const at = doc.scrollTop || 0;
+  if (dir === "down" && at >= max - 1) return false;
+  if (dir === "up" && at <= 0) return false;
+  const step = Math.max(1, Math.round(h * POLICY_SCROLL_FRACTION));
+  doc.scrollTop = Math.max(0, Math.min(max, at + (dir === "down" ? step : -step)));
+  return true;
+}
+
+// Nudge the hint line to say what the D-pad will do next, so "Down" arriving at
+// the bottom and then moving to Done doesn't feel like a glitch.
+function refreshPolicyHint() {
+  if (typeof document === "undefined") return;
+  const hint = document.getElementById("policy-hint");
+  const doc = policyDoc();
+  if (!hint || !doc) return;
+  const max = (doc.scrollHeight || 0) - (doc.clientHeight || 0);
+  const atEnd = max <= 1 || (doc.scrollTop || 0) >= max - 1;
+  hint.textContent = atEnd
+    ? "End of policy · Down for Done, or press Back"
+    : "Up / Down to scroll · Back to return";
+}
+
+// Restore the About screen's status line to its default (the support email) when
+// that screen is re-entered, so a message from an earlier press doesn't linger.
 const PRIVACY_NOTE_DEFAULT =
   'Questions? <span class="url">badgameseva@gmail.com</span>';
 function resetPrivacyNote() {
@@ -1117,40 +1194,6 @@ function resetPrivacyNote() {
   if (!note) return;
   note.innerHTML = PRIVACY_NOTE_DEFAULT;
   note.classList.remove("is-warn");
-}
-
-function openPrivacyPolicy() {
-  const url = CONFIG.privacyUrl;
-  const note = typeof document !== "undefined"
-    ? document.getElementById("privacy-note") : null;
-  const say = (text, warn) => {
-    if (!note) return;
-    note.textContent = text;
-    note.classList.toggle("is-warn", !!warn);
-  };
-
-  // 1) Native host. send() reports whether a channel accepted the message.
-  if (nativeBridge.send("open-url", { url })) {
-    say("Opening the privacy policy in your browser…");
-    return true;
-  }
-
-  // 2) Plain browser. noopener so the new tab can't reach back into this one.
-  try {
-    if (typeof window !== "undefined" && typeof window.open === "function") {
-      const w = window.open(url, "_blank", "noopener");
-      if (w) { say("Opened the privacy policy in a new tab."); return true; }
-    }
-  } catch (e) { /* popup blocked or window.open unavailable — fall through */ }
-
-  // 3) Neither route reported success. Say the same reassuring thing anyway: TV
-  //    devices DO have a browser, and a WebView host that swallows the message
-  //    without acknowledging it is indistinguishable here from one that never
-  //    got it — so a "can't open a browser" warning would more often be wrong
-  //    than right, and would read as a broken app on a device where it works.
-  //    The URL stays printed on the button as the always-available fallback.
-  say("Opening the privacy policy in your browser…");
-  return false;
 }
 
 function useHint() {
@@ -1335,7 +1378,11 @@ function wire() {
   document.getElementById("btn-history").onclick = () => { renderHistory(); showScreen("history"); };
   document.getElementById("btn-history-back").onclick = () => showScreen("home");
   document.getElementById("btn-howto").onclick = () => { resetPrivacyNote(); showScreen("howto"); };
-  document.getElementById("btn-privacy").onclick = openPrivacyPolicy;
+  // Pass the event through: #btn-privacy is an <a href> to the hosted policy, and
+  // showPolicy() cancels that navigation so we render the policy in-app instead.
+  // The href is the no-JS fallback, not the intended path.
+  document.getElementById("btn-privacy").onclick = (e) => showPolicy(e);
+  document.getElementById("btn-policy-back").onclick = () => showScreen("howto");
   document.getElementById("btn-howto-back").onclick = () => showScreen("home");
   document.getElementById("btn-back").onclick = () => showScreen("home");
   document.getElementById("btn-hint").onclick = useHint;
@@ -1414,9 +1461,11 @@ const nativeBridge = {
       this.send("back-handled");
       return;
     }
-    // 2) Not on home → go back a screen (flat nav: everything returns to home).
+    // 2) Not on home → go back a screen. Nav is flat (everything returns to home)
+    //    with one nesting: the policy screen was reached FROM About, so it steps
+    //    back there instead of dumping the player at home.
     if (activeScreen !== "home") {
-      showScreen("home");
+      showScreen(activeScreen === "policy" ? "howto" : "home");
       this.send("back-handled");
       return;
     }
@@ -1485,7 +1534,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v40 (About screen legible at 10 feet; policy URL is a D-pad control)");
+  console.log("Words on Demand — build v41 (full privacy policy renders in-app, D-pad scrollable)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -1502,7 +1551,8 @@ if (typeof module !== "undefined" && module.exports) {
     rewindPress, rewindRelease,
     unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow,
     imaAvailable,
-    openPrivacyPolicy, resetPrivacyNote,
+    showPolicy, scrollPolicy, refreshPolicyHint, resetPrivacyNote,
+    POLICY_SCROLL_FRACTION,
     maybeCoachRowWipe, COACH_ROW_WIPE_TIMES,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };

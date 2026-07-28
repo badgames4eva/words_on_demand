@@ -50,7 +50,9 @@
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
         getActiveScreen = G.getActiveScreen,
-        openPrivacyPolicy = G.openPrivacyPolicy, resetPrivacyNote = G.resetPrivacyNote;
+        showPolicy = G.showPolicy, scrollPolicy = G.scrollPolicy,
+        refreshPolicyHint = G.refreshPolicyHint, resetPrivacyNote = G.resetPrivacyNote,
+        POLICY_SCROLL_FRACTION = G.POLICY_SCROLL_FRACTION;
 
   // ---- scoreGuess: the classic duplicate-letter minefield ----------------
   test("scoreGuess: all correct", () => {
@@ -726,23 +728,28 @@
     }
   });
 
-  // ---- privacy policy: open-url handoff ----------------------------------
-  // Swap in a recording host AND a stubbed window.open, so no test can actually
-  // pop a browser tab open while the suite runs in tests.html.
-  //   host === null   => no native bridge (plain-browser path)
-  //   opener          => what window.open returns; null models a blocked popup
+  // ---- privacy policy: rendered IN-APP -----------------------------------
+  // The policy is a screen in this app, not a browser handoff. #btn-privacy is
+  // still an <a href> so a JS-less press degrades to the hosted page (a Fire OS
+  // WebView with no WebViewClient hands a clicked link to the system browser),
+  // but with JS alive showPolicy() must cancel that navigation and stay in-app.
+  //
+  // withPolicyEnv still stubs window.open, so a regression that reintroduces the
+  // handoff can't pop a real tab open while the suite runs in tests.html.
+  //   host === null => no native bridge at all;  host === {} => bridge present
   function withPolicyEnv(host, opener, fn) {
     const realApi = (typeof window !== "undefined") ? window.WordsOnDemand : undefined;
     const realOpen = (typeof window !== "undefined") ? window.open : undefined;
     const sent = [];
+    const opened = [];
     if (typeof window !== "undefined") {
       window.WordsOnDemand = host === null
         ? undefined
-        : { postMessage: (m) => sent.push(m), onMessage: null };
-      window.open = () => opener;
+        : Object.assign({ postMessage: (m) => sent.push(m), onMessage: null }, host);
+      window.open = (u) => { opened.push(u); return opener; };
     }
     try {
-      return fn(sent);
+      return fn(sent, opened);
     } finally {
       if (typeof window !== "undefined") {
         window.WordsOnDemand = realApi;
@@ -752,20 +759,125 @@
   }
   const policyNote = () =>
     (typeof document !== "undefined" ? document.getElementById("privacy-note") : null);
+  // Stand-in for the anchor's click event; records whether we cancelled the link.
+  const fakeClick = () => ({ defaultPrevented: false,
+    preventDefault() { this.defaultPrevented = true; } });
 
-  test("privacy: a native host gets open-url with the policy URL", () => {
-    withPolicyEnv({}, null, (sent) => {
-      ok(openPrivacyPolicy(), "reports success when the host accepted it");
-      eq(sent.length, 1, "exactly one message");
-      eq(sent[0].type, "open-url");
-      eq(sent[0].url, CONFIG.privacyUrl, "carries the configured policy URL");
-      ok(/^https:\/\//.test(CONFIG.privacyUrl), "policy URL is https");
+  test("policy: the button opens the in-app screen, not a browser", () => {
+    withPolicyEnv({}, { closed: false }, (sent, opened) => {
+      const ev = fakeClick();
+      ok(showPolicy(ev), "showPolicy reports it handled the press");
+      eq(getActiveScreen(), "policy", "we're on the in-app policy screen");
+      eq(opened.length, 0, "no browser tab opened");
+      eq(sent.filter((m) => m.type === "open-url").length, 0,
+         "no open-url handoff — the point is to STAY in the app");
+      ok(ev.defaultPrevented, "the anchor's navigation was cancelled");
+      showScreen("home");
     });
   });
 
-  // The payload argument must not have changed the wire format of the messages
-  // the native wrapper already implements — those stay exactly { type }.
-  test("privacy: adding a payload didn't change ready/back-handled/exit", () => {
+  // A remote has no scrollbar, so the doc itself is the focused control and
+  // Up/Down page it. Verified against a stub with a known scrollHeight so the
+  // arithmetic is checked, not just "it didn't throw".
+  test("policy: Down scrolls the doc, Up scrolls back, both clamp", () => {
+    const doc = typeof document !== "undefined"
+      ? document.getElementById("policy-doc") : null;
+    if (!doc) { ok(true, "no DOM"); return; }
+    const realClient = doc.clientHeight, realScroll = doc.scrollHeight;
+    try {
+      // 400px visible of a 1200px document => 800px of travel.
+      Object.defineProperty(doc, "clientHeight", { value: 400, configurable: true });
+      Object.defineProperty(doc, "scrollHeight", { value: 1200, configurable: true });
+      doc.scrollTop = 0;
+      ok(scrollPolicy("down"), "Down moves when there's room below");
+      eq(doc.scrollTop, Math.round(400 * POLICY_SCROLL_FRACTION),
+         "moves by one configured step, not a full page");
+      ok(scrollPolicy("up"), "Up moves back off the top");
+      eq(doc.scrollTop, 0, "back where we started");
+      ok(!scrollPolicy("up"), "at the top, Up reports it can't move (focus escapes)");
+      doc.scrollTop = 800;
+      ok(!scrollPolicy("down"), "at the bottom, Down reports it can't move");
+      eq(doc.scrollTop, 800, "and doesn't scroll past the end");
+    } finally {
+      if (realClient !== undefined)
+        Object.defineProperty(doc, "clientHeight", { value: realClient, configurable: true });
+      if (realScroll !== undefined)
+        Object.defineProperty(doc, "scrollHeight", { value: realScroll, configurable: true });
+    }
+  });
+
+  // The D-pad must never be trapped in the text: at the ends, scrollPolicy()
+  // returning false is what lets focus move to Done. A doc with nothing to scroll
+  // (short window, or the headless stub) must also report false, not swallow the press.
+  test("policy: an unscrollable doc never swallows the D-pad", () => {
+    const doc = typeof document !== "undefined"
+      ? document.getElementById("policy-doc") : null;
+    if (!doc) { ok(true, "no DOM"); return; }
+    const realClient = doc.clientHeight, realScroll = doc.scrollHeight;
+    try {
+      Object.defineProperty(doc, "clientHeight", { value: 400, configurable: true });
+      Object.defineProperty(doc, "scrollHeight", { value: 400, configurable: true });
+      ok(!scrollPolicy("down"), "nothing to scroll => press falls through");
+      ok(!scrollPolicy("up"), "in both directions");
+    } finally {
+      if (realClient !== undefined)
+        Object.defineProperty(doc, "clientHeight", { value: realClient, configurable: true });
+      if (realScroll !== undefined)
+        Object.defineProperty(doc, "scrollHeight", { value: realScroll, configurable: true });
+    }
+  });
+
+  test("policy: re-entering always starts at the top of the document", () => {
+    const doc = typeof document !== "undefined"
+      ? document.getElementById("policy-doc") : null;
+    withPolicyEnv({}, null, () => {
+      if (doc) doc.scrollTop = 250;
+      showPolicy(fakeClick());
+      if (doc) eq(doc.scrollTop, 0, "scrolled back to the top on entry");
+      ok(true, "showPolicy is safe with a stub doc");
+      showScreen("home");
+    });
+  });
+
+  // BACK from the policy returns to About (where the button was), not home. The
+  // player pressed a button on that screen; landing anywhere else loses their place.
+  test("policy: BACK steps back to About, not home", async () => {
+    withPolicyEnv({}, null, () => { showPolicy(fakeClick()); });
+    eq(getActiveScreen(), "policy", "on the policy screen");
+    nativeBridge.onNativeMessage({ type: "back" });
+    await tick();
+    eq(getActiveScreen(), "howto", "back went to About, not home");
+    showScreen("home");
+  });
+
+  // The BACK contract itself must not have regressed: the wrapper still needs a
+  // synchronous back-handled for a press on a nested screen.
+  test("policy: BACK from the policy still answers back-handled", async () => {
+    await withPolicyEnv({}, null, async (sent) => {
+      showPolicy(fakeClick());
+      nativeBridge.onNativeMessage({ type: "back" });
+      ok(sent.some((m) => m.type === "back-handled"), "wrapper got its reply");
+      await tick();
+      showScreen("home");
+    });
+  });
+
+  // A plain <a> with no JS at all must still reach the policy: no target="_blank"
+  // (an Android WebView drops it unless the host enables multiple windows) and an
+  // absolute https href, since the WebView's base URL isn't our domain.
+  test("policy: the markup alone still reaches the hosted copy (no-JS fallback)", () => {
+    if (typeof document === "undefined") { ok(true, "n/a"); return; }
+    const a = document.getElementById("btn-privacy");
+    if (!a || typeof a.getAttribute !== "function" || !a.tagName) { ok(true, "DOM stub"); return; }
+    eq(String(a.tagName).toLowerCase(), "a", "it's a real anchor, not a button");
+    eq(a.getAttribute("href"), CONFIG.privacyUrl, "href matches CONFIG.privacyUrl");
+    ok(!a.getAttribute("target"), "no target=_blank (WebViews drop it)");
+    ok(/^https:\/\//.test(CONFIG.privacyUrl), "policy URL is https");
+  });
+
+  // The bridge gained a payload argument for open-url; the messages the wrapper
+  // already implements must still go out as exactly { type }.
+  test("policy: the payload argument didn't change ready/back-handled/exit", () => {
     withPolicyEnv({}, null, (sent) => {
       ["ready", "back-handled", "exit"].forEach((t) => nativeBridge.send(t));
       eq(sent.length, 3, "all three went out");
@@ -776,31 +888,8 @@
     });
   });
 
-  test("privacy: no native host falls back to opening a browser tab", () => {
-    withPolicyEnv(null, { closed: false }, (sent) => {
-      ok(openPrivacyPolicy(), "window.open succeeded => success");
-      eq(sent.length, 0, "nothing posted to a native host (there isn't one)");
-    });
-  });
-
-  // Neither route confirmed success. The press must still say something (silence
-  // reads as a broken app) but must NOT claim the device has no browser — a host
-  // that swallows the message looks identical from here, and TVs do have one.
-  test("privacy: an unconfirmed open still reassures, never warns", () => {
+  test("policy: re-entering About resets its note (no stale message)", () => {
     withPolicyEnv(null, null, () => {
-      ok(!openPrivacyPolicy(), "reports that nothing acknowledged it");
-      const note = policyNote();
-      if (note && typeof note.textContent === "string") {
-        ok(note.textContent.length > 0, "the status line says something");
-        ok(!/can't|cannot|unable/i.test(note.textContent),
-           "no can't-open-a-browser claim (usually false on a TV)");
-      }
-    });
-  });
-
-  test("privacy: re-entering the screen resets the note (no stale message)", () => {
-    withPolicyEnv(null, null, () => {
-      openPrivacyPolicy();                 // leaves a failure message behind
       resetPrivacyNote();
       const note = policyNote();
       if (note && typeof note.innerHTML === "string") {
