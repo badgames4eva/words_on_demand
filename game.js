@@ -1556,7 +1556,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v42 (static hold-to-wipe hint replaces the coach toast)");
+  console.log("Words on Demand — build v43 (AdSense ownership meta tag)");
   wire();
   renderHomeStats();
   showScreen("home");

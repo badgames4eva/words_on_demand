@@ -4,7 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=42" />
+  <!-- AdSense site-ownership verification for the Google Ad Manager setup.
+       Deliberately the META-TAG method and not the AdSense code snippet: the
+       snippet loads adsbygoogle.js on every launch, which would put a
+       third-party request in front of a cold TV start and break the "no network
+       egress from the app itself" claim in STORE_COMPLIANCE.md. This tag costs
+       zero requests. Keep it here permanently — AdSense re-checks, and pulling
+       it disables the site. Same tag is in privacy.html.
+       Publisher: ca-pub-5597688543726963 (badgames4eva). Verified against the
+       host wordsondemand.badgames4eva.com, NOT the apex, which has no DNS. -->
+  <meta name="google-adsense-account" content="ca-pub-5597688543726963">
+  <link rel="stylesheet" href="styles.css?v=43" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -329,7 +339,7 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v42</div>
+  <div id="build-badge">build v43</div>
 
   <!-- The Google IMA HTML5 SDK (~488 KB) is NOT requested here on purpose. It's
        lazy-loaded by ensureImaSdk() in game.js on the first "Play", so it never
@@ -340,7 +350,7 @@
   <!-- defer: don't block HTML parsing. Both keep document order and run after
        the document is parsed, so game.js's bottom-of-body boot block still finds
        #btn-play and the DOM it wires. -->
-  <script src="words.js?v=42" defer></script>
-  <script src="game.js?v=42" defer></script>
+  <script src="words.js?v=43" defer></script>
+  <script src="game.js?v=43" defer></script>
 </body>
 </html>

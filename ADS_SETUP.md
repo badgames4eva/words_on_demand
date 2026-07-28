@@ -43,6 +43,41 @@ Two placements, mapped to the two natural break points:
   display integration. (This is the AdMob-vs-AdSense-vs-GAM confusion resolved: GAM is
   the ad *server*; AdSense/AdX are *demand* inside it; AdMob is not used at all.)
 
+#### Verifying site ownership — already done, don't redo it another way
+
+AdSense makes you prove you own the site before it will pay out, and offers three
+methods. **We used the meta tag**, and it's already in the repo:
+
+```html
+<meta name="google-adsense-account" content="ca-pub-5597688543726963">
+```
+
+It's in the `<head>` of **both** pages the site has — [index.html](index.html) and
+[privacy.html](privacy.html) — because AdSense asks for it on every page. Publisher ID
+`ca-pub-5597688543726963` (badgames4eva); it is *not* a secret, it's designed to be
+public in page markup.
+
+Why the meta tag and not the other two:
+
+- **AdSense code snippet** — rejected. It loads `adsbygoogle.js` on every page load,
+  which puts a third-party request in front of a cold TV launch and contradicts the
+  "no network egress from the app itself" claim in [STORE_COMPLIANCE.md](STORE_COMPLIANCE.md).
+  The meta tag costs zero requests.
+- **ads.txt** — not possible yet. The IAB spec requires it at the **root** domain
+  (`badgames4eva.com/ads.txt`), and only the `wordsondemand.` subdomain has a DNS
+  record; the apex doesn't resolve at all.
+
+Two things to get right:
+
+1. Add the site in AdSense as **`wordsondemand.badgames4eva.com`**, not the apex — the
+   apex can't pass *any* verification method until it resolves.
+2. **Leave the tag in place permanently.** AdSense re-checks it, and removing it
+   disables the site.
+
+Still open: the apex needs to resolve eventually, because the TV app will want
+`app-ads.txt` at the developer-website root (and `ads.txt`, if it's ever needed, can
+only live at the root).
+
 ### 2. Create a video ad unit
 
 - **Inventory → Ad units → New ad unit.**
