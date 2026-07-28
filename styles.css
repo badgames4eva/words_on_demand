@@ -258,6 +258,21 @@ body {
 /* When spent for the row / only one letter left, .is-disabled dims the whole
    button (see .btn.is-disabled); mute the badge so it doesn't stay loud. */
 .btn.btn-hint.is-disabled .hint-badge { background: var(--muted); }
+/* Static hold-to-wipe hint, between the board and the keyboard. Deliberately
+   quiet — muted, small, no background plate — because it's a standing note, not
+   an alert: it's on screen for as long as the row has a pinned green, so anything
+   louder would nag. (The toast version it replaced had the opposite problem.)
+   The icon sits at the same size as the keyboard's own glyphs so the eye connects
+   the two; nothing here is focusable, since it's a label, not a control. */
+.row-wipe-note {
+  margin: 0; display: flex; align-items: center; justify-content: center;
+  gap: .5rem;
+  font-size: 1rem; color: var(--muted);
+}
+.row-wipe-note[hidden] { display: none; }
+.rww-icon { display: flex; align-items: center; }
+.rww-icon .key-svg { width: 1.1rem; height: 1.1rem; }
+
 /* Persistent revealed-letter readout under the hint button. Sticks around until
    the next guess (unlike the transient toast) so it's readable at a glance. */
 .hint-reveal {
@@ -445,6 +460,23 @@ body {
 .policy-hint {
   font-size: clamp(.9rem, 1.55vmin, 1.15rem); color: var(--muted);
   margin-top: clamp(.5rem, 1.4vmin, 1rem); opacity: .85;
+}
+
+/* 720p/768p — the primary TV target, and the tightest one that must fit whole.
+   Measured: at 1280x720 the game screen already overran by 14px before the
+   hold-to-wipe hint existed (the board + legend + keyboard + hint button simply
+   add up past 720), and the hint took that to 45px. The keyboard is the control
+   surface, so anything clipped at the bottom is unreachable by a D-pad — this
+   buys the room back from padding, gaps, and the hint button's chrome rather than
+   from the board or the key size, which are what make it playable from a couch.
+   Verified overflow=0 at 1280x720 and 1366x768 with the hint showing. */
+@media (max-height: 800px) {
+  #game { padding-top: clamp(3.2rem, 5.5vh, 5.5vh); gap: .35rem; }
+  .legend { gap: 1.1rem; font-size: 1rem; }
+  .legend-item { font-size: 1rem; }
+  .row-wipe-note { font-size: .95rem; }
+  .btn.btn-hint { padding: .55rem 1.3rem; font-size: 1.2rem; }
+  .hint-icon { font-size: 1.25rem; }
 }
 
 /* Short viewports only. A 720p TV is 720px tall, so this can only be a small

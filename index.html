@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Words on Demand — Daily Word Puzzle for TV</title>
-  <link rel="stylesheet" href="styles.css?v=41" />
+  <link rel="stylesheet" href="styles.css?v=42" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -60,6 +60,15 @@
       <span class="legend-item"><span class="swatch present"></span>In the word, wrong spot</span>
       <span class="legend-item"><span class="swatch absent"></span>Not in the word</span>
     </div>
+
+    <!-- Static hold-to-wipe hint. Replaces a toast coach tip: a toast covered
+         the board, drew the eye at the worst moment, and vanished before it was
+         read across a room. This sits still instead, and only exists while it's
+         actionable — i.e. while the row has a carried-down green pinned in it
+         (renderRowWipeNote in game.js). The glyph is the remote's Rewind icon
+         with no word for it: the icon is on the Erase key too, so it points at
+         the control rather than naming a button the player has to find. -->
+    <p class="row-wipe-note" id="row-wipe-note" hidden></p>
 
     <div class="keyboard" id="keyboard" aria-label="On-screen keyboard"></div>
 
@@ -320,7 +329,7 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v41</div>
+  <div id="build-badge">build v42</div>
 
   <!-- The Google IMA HTML5 SDK (~488 KB) is NOT requested here on purpose. It's
        lazy-loaded by ensureImaSdk() in game.js on the first "Play", so it never
@@ -331,7 +340,7 @@
   <!-- defer: don't block HTML parsing. Both keep document order and run after
        the document is parsed, so game.js's bottom-of-body boot block still finds
        #btn-play and the DOM it wires. -->
-  <script src="words.js?v=41" defer></script>
-  <script src="game.js?v=41" defer></script>
+  <script src="words.js?v=42" defer></script>
+  <script src="game.js?v=42" defer></script>
 </body>
 </html>

@@ -60,8 +60,9 @@ Then visit http://localhost:8080
 ## Tests
 
 Logic tests (scoring, puzzle-of-day math, dictionary integrity, "one more round"
-skip, carry-down greens, config, the native BACK contract, time formatting) — no
-framework, no build step. Run either way:
+skip, carry-down greens, config, the native BACK contract, time formatting, and
+the privacy-policy copies' date sync) — no framework, no build step. Run either
+way:
 
 ```bash
 node run-tests.js          # headless, exits non-zero on failure (good for CI)
@@ -71,6 +72,11 @@ node run-tests.js          # headless, exits non-zero on failure (good for CI)
 the same assertions in [tests.js](tests.js) against the real `words.js`/`game.js`.
 Visual and feel (10-foot layout, focus ring, ad screen) stay a manual check in
 the actual page.
+
+One assertion is Node-only: the policy-date check reads PRIVACY.md, privacy.html,
+and index.html off disk (`POLICY_FILES` in [run-tests.js](run-tests.js)), which a
+browser can't do. It skips itself in `tests.html` and says so, rather than quietly
+passing. **`node run-tests.js` is the gate before a push**, so run that one.
 
 ## Deploy
 
@@ -139,6 +145,19 @@ work but buying no speed.
 | Rewind        | (MediaRewind)      | Delete: tap = one letter, hold = wipe the row (incl. carried-down greens) |
 | Back          | Backspace / Esc    | Close dialog, delete letter, or go home       |
 | —             | A–Z keys           | Type directly (testing only)                  |
+
+A hold is invisible, so the row-wipe gesture is taught on screen: a static line
+under the board (`#row-wipe-note`, `renderRowWipeNote` in [game.js](game.js))
+shows the Rewind glyph + "Hold to clear the whole row" exactly while the current
+row has a carried-down green pinned in it — the only state where wiping does
+something tap-to-delete can't. It needs no persisted counter and no timer,
+because the condition *is* the relevance: it retires itself.
+
+This replaced a counted coach toast, which landed over the board right after the
+reveal, pulled the eye off the tiles the player just earned, and was gone before
+it could be read from a couch. Don't reintroduce a toast for it. The glyph
+carries no word — the same icon is on the Erase key, so it identifies the control
+by sight instead of naming a button that isn't labeled "Rewind" on screen.
 
 On the on-screen keyboard, **Left/Right wrap within a row** (P⇄Q, L⇄A, ENTER⇄Z)
 so the D-pad never dead-ends at a row edge. The ENTER key shows the remote's

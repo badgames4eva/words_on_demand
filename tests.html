@@ -25,6 +25,19 @@
   <div id="summary">running…</div>
   <ul id="list"></ul>
 
+  <!-- Minimal DOM fixture. This page deliberately does NOT include the game UI
+       (the boot guard in game.js keys off a missing #btn-play to stay dormant),
+       but the native-BACK tests assert on real modal state: openModal() no-ops
+       when its element is absent, so without this the exit-dialog assertions all
+       failed here while passing in the Node runner, which stubs every id.
+       Kept off-screen rather than hidden — game.js toggles [hidden] itself. -->
+  <div style="position:absolute; left:-9999px; top:-9999px;" aria-hidden="true">
+    <div id="exit-modal" hidden>
+      <button class="focusable" data-nav-group="exit" id="btn-keep-playing">Keep Playing</button>
+      <button class="focusable" data-nav-group="exit" id="btn-end-fun">End the Fun</button>
+    </div>
+  </div>
+
   <!-- Load the real app code (no ?v= needed; this page isn't cached long). The
        boot guard in game.js keeps it from wiring up the (absent) game UI. -->
   <script src="words.js"></script>
@@ -40,12 +53,15 @@
       typeLetter, removeLetter, currentGuess, wipeCurrentRow,
       rewindPress, rewindRelease,
       unrevealedColumns, hintAvailable, hintDisabledReason, nextKeyInRow,
-    imaAvailable,
+      imaAvailable, pickInDirection,
       showPolicy, scrollPolicy, refreshPolicyHint, resetPrivacyNote,
       POLICY_SCROLL_FRACTION,
-    maybeCoachRowWipe, COACH_ROW_WIPE_TIMES,
+      renderRowWipeNote,
       nativeBridge, openModal, closeModal, isModalOpen,
       showScreen, getActiveScreen,
+      // POLICY_FILES is intentionally absent: it's raw file text, which only the
+      // Node runner can read. The policy-date-sync test skips itself here and
+      // says so, so this page stays green without pretending to have checked.
     };
   </script>
   <script src="tests.js"></script>

@@ -45,14 +45,16 @@
         hintAvailable = G.hintAvailable, hintDisabledReason = G.hintDisabledReason,
         nextKeyInRow = G.nextKeyInRow, imaAvailable = G.imaAvailable,
         pickInDirection = G.pickInDirection;
-  const maybeCoachRowWipe = G.maybeCoachRowWipe,
-        COACH_ROW_WIPE_TIMES = G.COACH_ROW_WIPE_TIMES;
+  const renderRowWipeNote = G.renderRowWipeNote;
   const nativeBridge = G.nativeBridge, closeModal = G.closeModal,
         isModalOpen = G.isModalOpen, showScreen = G.showScreen,
         getActiveScreen = G.getActiveScreen,
         showPolicy = G.showPolicy, scrollPolicy = G.scrollPolicy,
         refreshPolicyHint = G.refreshPolicyHint, resetPrivacyNote = G.resetPrivacyNote,
         POLICY_SCROLL_FRACTION = G.POLICY_SCROLL_FRACTION;
+  // Raw file text, supplied by the Node runner only (see run-tests.js). undefined
+  // in the browser, where there's no filesystem — the test below skips itself.
+  const POLICY_FILES = G.POLICY_FILES;
 
   // ---- scoreGuess: the classic duplicate-letter minefield ----------------
   test("scoreGuess: all correct", () => {
@@ -347,40 +349,32 @@
       eq(nextEditableCol(), 0, "cursor back to column 0");
     });
   });
-  // ---- coach tip: teaching hold-to-wipe ----------------------------------
-  // The gesture is invisible (nothing implies a long press does more), so the tip
-  // is the only in-game teacher. These lock in WHEN it fires and that it stops.
-  function withCoachState(fn) {
-    const saved = store.data.coachRowWipe;
-    try { delete store.data.coachRowWipe; return fn(); }
-    finally {
-      if (saved === undefined) delete store.data.coachRowWipe;
-      else store.data.coachRowWipe = saved;
-    }
-  }
-  test("coach: no tip when the row has nothing pinned to clear", () => {
-    withCoachState(() => {
-      withRound("PLATE", [], () => {          // first row: no greens yet
-        maybeCoachRowWipe();
-        ok(!store.data.coachRowWipe, "tip not spent when it wouldn't make sense");
-      });
+  // ---- hold-to-wipe hint: shown exactly while it's actionable -------------
+  // The gesture is invisible (nothing implies a long press does more), so this
+  // static line is the only in-game teacher. It replaced a counted toast tip, so
+  // what matters now is the CONDITION, not a count: visible iff the row has a
+  // pinned green to clear, and never on a finished board.
+  test("wipe hint: hidden on a row with nothing pinned to clear", () => {
+    withRound("PLATE", [], () => {            // first row: no greens yet
+      ok(!renderRowWipeNote(), "nothing to wipe => no hint");
     });
   });
-  test("coach: tip fires on a row that arrives with carried-down greens", () => {
-    withCoachState(() => {
-      withRound("PLATE", ["PLANE"], () => {   // P/L/A/E carried down and locked
-        ok(game.locked.some(Boolean), "precondition: something is pinned");
-        maybeCoachRowWipe();
-        eq(store.data.coachRowWipe, 1, "tip shown once");
-      });
+  test("wipe hint: shown once a row carries down a locked green", () => {
+    withRound("PLATE", ["PLANE"], () => {     // P/L/A/E carried down and locked
+      ok(game.locked.some(Boolean), "precondition: something is pinned");
+      ok(renderRowWipeNote(), "hint offered exactly when the gesture does something");
     });
   });
-  test("coach: tip stops after COACH_ROW_WIPE_TIMES (not shown forever)", () => {
-    withCoachState(() => {
-      withRound("PLATE", ["PLANE"], () => {
-        for (let i = 0; i < COACH_ROW_WIPE_TIMES + 5; i++) maybeCoachRowWipe();
-        eq(store.data.coachRowWipe, COACH_ROW_WIPE_TIMES, "capped, then silent");
-      });
+  test("wipe hint: hidden after wiping the row (nothing left pinned)", () => {
+    withRound("PLATE", ["PLANE"], () => {
+      wipeCurrentRow();
+      ok(!renderRowWipeNote(), "gesture already used => hint retires itself");
+    });
+  });
+  test("wipe hint: hidden on a finished board", () => {
+    withRound("PLATE", ["PLANE"], () => {
+      game.finished = true;
+      ok(!renderRowWipeNote(), "no editing left to hint about");
     });
   });
 
@@ -898,6 +892,42 @@
       }
       ok(true, "resetPrivacyNote is safe to call");
     });
+  });
+
+  // ---- policy copies must not drift ---------------------------------------
+  // The policy text is hard-coded in three files and nothing links them: editing
+  // privacy.html does NOT update the in-app #policy screen. Rather than diff
+  // prose (which is legitimately worded differently for a 10-foot read), pin the
+  // one field that must be identical by definition — the "Last updated" date.
+  // Bumping it is step 4 of the STORE_COMPLIANCE procedure, so a copy that was
+  // forgotten entirely shows up here as a stale date.
+  test("policy: 'Last updated' date matches across all three copies", () => {
+    if (!POLICY_FILES) { ok(true, "skipped: needs the Node runner's file access"); return; }
+    // Tolerates the three markup styles the same field is written in:
+    // **Last updated:** (Markdown), <strong>Last updated:</strong> (privacy.html),
+    // and bare "Last updated July 27, 2026" (the in-app .policy-dates line).
+    const dateOf = (text) => {
+      const m = /Last updated:?(?:\*\*|<\/strong>)?:?\s*([A-Z][a-z]+ \d{1,2}, \d{4})/.exec(text);
+      return m ? m[1] : null;
+    };
+    const found = {};
+    for (const [file, text] of Object.entries(POLICY_FILES)) {
+      const d = dateOf(text);
+      ok(d, `${file}: no "Last updated <Month D, YYYY>" found — did the wording change?`);
+      found[file] = d;
+    }
+    const distinct = [...new Set(Object.values(found))];
+    eq(distinct.length, 1,
+       "policy copies disagree: " + JSON.stringify(found) +
+       " — see 'Changing the policy text itself' in STORE_COMPLIANCE.md");
+  });
+  test("policy: the in-app screen carries an Effective date too", () => {
+    if (!POLICY_FILES) { ok(true, "skipped: needs the Node runner's file access"); return; }
+    // A reviewer compares the app screen against the hosted page; a missing
+    // effective date on one of them reads as an unsigned document.
+    for (const [file, text] of Object.entries(POLICY_FILES)) {
+      ok(/Effective(?: date)?:?/.test(text), `${file}: no effective date`);
+    }
   });
 
   // ---- formatDuration ----------------------------------------------------

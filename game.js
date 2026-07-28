@@ -164,7 +164,12 @@ let sessionAnswers = new Set();
 // ---------------------------------------------------------------------------
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("is-active"));
-  document.getElementById(id).classList.add("is-active");
+  // The <section> is absent when this code is loaded outside index.html — the
+  // browser test page (tests.html) has no screens. Track activeScreen anyway:
+  // it's what handleBack and the native BACK contract key off, and those are
+  // exactly what those tests exercise. Same posture as the #btn-play boot guard.
+  const el = document.getElementById(id);
+  if (el) el.classList.add("is-active");
   activeScreen = id;
   // The solve timer only advances while the game board is on screen — it pauses
   // for ads, results, history, or stepping away. No timing pressure during play
@@ -649,6 +654,9 @@ function rewindRelease() {
 }
 
 function renderCurrentRow() {
+  // Before the row guard: the wipe hint is driven by game.locked, which is
+  // meaningful even when the board isn't in the DOM (headless tests).
+  renderRowWipeNote();
   const r = game.guesses.length;
   const row = document.querySelector(`.board-row[data-row="${r}"]`);
   if (!row) return;
@@ -691,8 +699,10 @@ function submitGuess() {
   } else {
     renderCurrentRow(); // show carried-down greens + cursor on the new row
     refreshHintButton(); // new row => a fresh hint becomes available
-    maybeCoachRowWipe(); // first rows with pinned greens: teach hold-to-wipe
   }
+  // Also on the win/lose branches: the row still holds locked greens, and the
+  // hint must not sit under the board during the reveal pause.
+  renderRowWipeNote();
   saveProgress();
 }
 
@@ -779,6 +789,7 @@ function startRound(offset) {
   game.timerStart = null; // showScreen("game") will resume it if unfinished
   replayGuesses();
   resetCurrentRow();       // carry down greens from any resumed guesses
+  renderRowWipeNote();     // stays hidden on a finished board (early return below)
 
   document.getElementById("puzzle-no").textContent = puzzleIndex(offset);
   renderHeaderStreak();
@@ -1249,29 +1260,40 @@ function toast(msg, ms) {
 }
 
 // ---------------------------------------------------------------------------
-// Coach tips (teach the non-obvious gestures)
+// Hold-to-wipe hint (teach the one non-obvious gesture)
 // ---------------------------------------------------------------------------
 // Hold-to-wipe is genuinely useful — it's the only way to abandon a pinned
 // carried-down green and type freely — but a HOLD is invisible: nothing on
-// screen implies that pressing Erase longer does something different. The How to
-// Play screen documents it, and this teaches it in the one moment it's
-// actionable: the first time a row arrives with greens already filled in.
+// screen implies that pressing Erase longer does something different.
 //
-// Shown a few times, not once. A single tip at the exact moment a new player is
-// busy reading a fresh board is a tip nobody registers; a permanent one is
-// nagging. The count persists in the store so it doesn't restart every launch.
-const COACH_ROW_WIPE_TIMES = 3;
-function maybeCoachRowWipe() {
-  const d = store.data;
-  if ((d.coachRowWipe || 0) >= COACH_ROW_WIPE_TIMES) return;
-  // Only relevant when there is actually something pinned to clear.
-  if (!game.locked.some(Boolean)) return;
-  d.coachRowWipe = (d.coachRowWipe || 0) + 1;
-  store.save();
-  // Delayed so it lands after the tile-flip reveal, not competing with it.
-  setTimeout(() => {
-    toast("Tip: hold Erase to clear the whole row", 3200);
-  }, CONFIG.revealDelayMs);
+// This was a toast ("Tip: hold Erase…", 3 times, counted in the store). Dropped:
+// a toast lands over the board right after the reveal, pulls the eye away from
+// the thing the player just earned, and is gone before it's read from a couch.
+//
+// Now it's a static line under the board, shown exactly while it's actionable —
+// whenever the current row has a green pinned into it, which is the only state
+// where wiping does something delete-one-letter can't. It needs no persisted
+// counter and no timer: the condition IS the relevance, so it disappears on its
+// own the moment the gesture stops mattering.
+//
+// The glyph is ICON_REWIND with no word for it. The same icon is on the Erase
+// key, so it identifies the control by sight; naming it "Rewind" made the player
+// hunt for a label that isn't on the key (and it's "Erase" on screen anyway).
+// Returns whether the hint is showing, so a test can assert the condition
+// without a real #row-wipe-note in the document (tests.html has no board).
+function renderRowWipeNote() {
+  const show = !game.finished && game.locked.some(Boolean);
+  const el = document.getElementById("row-wipe-note");
+  if (!el) return show;
+  el.hidden = !show;
+  if (!show) { el.innerHTML = ""; return show; }
+  el.innerHTML =
+    `<span class="rww-icon" aria-hidden="true">${ICON_REWIND}</span>` +
+    `<span class="rww-text">Hold to clear the whole row</span>`;
+  // Spoken form spells the gesture out — a screen reader gets nothing from the
+  // icon, and "hold to clear" alone doesn't say what to hold.
+  el.setAttribute("aria-label", "Hold the Erase or Rewind button to clear the whole row");
+  return show;
 }
 
 // ---------------------------------------------------------------------------
@@ -1534,7 +1556,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v41 (full privacy policy renders in-app, D-pad scrollable)");
+  console.log("Words on Demand — build v42 (static hold-to-wipe hint replaces the coach toast)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -1553,7 +1575,7 @@ if (typeof module !== "undefined" && module.exports) {
     imaAvailable,
     showPolicy, scrollPolicy, refreshPolicyHint, resetPrivacyNote,
     POLICY_SCROLL_FRACTION,
-    maybeCoachRowWipe, COACH_ROW_WIPE_TIMES,
+    renderRowWipeNote,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };
 }

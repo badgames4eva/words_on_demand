@@ -79,6 +79,17 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 
 const load = (f) => fs.readFileSync(path.join(DIR, f), "utf8");
+
+// Raw text of the files that carry duplicated policy copy. There is no build
+// step to include the policy once, so the three copies can silently drift — this
+// hands them to tests.js so a mismatch fails the pre-push check instead of
+// reaching a store reviewer who reads both. Node-only: the browser runner has no
+// filesystem, so tests.html skips that one assertion (it says so when it does).
+const POLICY_FILES = {
+  "PRIVACY.md": load("PRIVACY.md"),
+  "privacy.html": load("privacy.html"),
+  "index.html": load("index.html"),
+};
 // Expose the internals tests.js expects onto the sandbox global.
 const exposer = `
   globalThis.WOD_UNDER_TEST = {
@@ -93,10 +104,15 @@ const exposer = `
     imaAvailable,
     showPolicy, scrollPolicy, refreshPolicyHint, resetPrivacyNote,
     POLICY_SCROLL_FRACTION,
-    maybeCoachRowWipe, COACH_ROW_WIPE_TIMES,
+    renderRowWipeNote,
     nativeBridge, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen,
+    POLICY_FILES: globalThis.WOD_POLICY_FILES,
   };`;
+
+// Handed over as a real object, NOT interpolated into the exposer source — a
+// backtick or a ${ sequence in any policy file would otherwise corrupt it.
+sandbox.WOD_POLICY_FILES = POLICY_FILES;
 
 vm.createContext(sandbox);
 try {

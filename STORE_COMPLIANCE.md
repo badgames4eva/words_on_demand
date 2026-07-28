@@ -335,11 +335,15 @@ to include it once, so this is manual — and a store reviewer can compare them:
 ### Verify after any change
 
 ```bash
-node run-tests.js                                     # 84/84
+node run-tests.js                                     # 87/87 — includes the date-sync check
 grep -rn 'PUBLISHER_NAME\|CONTACT_EMAIL' . --include='*.md' --include='*.html'   # no placeholders left
-grep -c 'Last updated' PRIVACY.md privacy.html index.html   # the date lives in all three
 curl -s https://wordsondemand.badgames4eva.com/privacy | grep -c 'your-new@email.com'
 ```
+
+`node run-tests.js` now fails if the three copies' **"Last updated"** dates
+disagree, which is the cheap proxy for "you forgot one" — nothing links the files,
+so a missed copy shows up as a stale date. It does *not* diff the prose (the in-app
+wording is legitimately shorter), so re-read the copies yourself for substance.
 
 Then open **How to Play & About** in the app, read the summary, and press *Read Full
 Privacy Policy* — that opens the in-app `#policy` screen, which is the copy a player
