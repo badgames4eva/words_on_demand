@@ -844,7 +844,7 @@ function endRound() {
 function renderResult() {
   document.getElementById("result-title").textContent = game.won ? "Solved! 🎉" : "So close!";
   document.getElementById("result-word").innerHTML = game.won
-    ? `You got it in ${game.guesses.length} ${game.guesses.length === 1 ? "guess" : "guesses"}.`
+    ? `The word was <strong>${game.answer}</strong>.<br>You got it in ${game.guesses.length} ${game.guesses.length === 1 ? "guess" : "guesses"}.`
     : `The word was <strong>${game.answer}</strong>.`;
   document.getElementById("result-streak").textContent = store.data.streak;
   document.getElementById("result-guesses").textContent = game.won ? game.guesses.length : "—";
@@ -1556,7 +1556,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v43 (AdSense ownership meta tag)");
+  console.log("Words on Demand — build v44 (Solved screen shows the word)");
   wire();
   renderHomeStats();
   showScreen("home");
