@@ -262,6 +262,14 @@
   test("ads: IMA is absent without the SDK (fall back to placeholder)", () => {
     ok(!imaAvailable(), "no google.ima in the test/browser-demo sandbox => placeholder");
   });
+  test("ads: adsEnabled is off, and playAd then continues immediately exactly once", () => {
+    eq(CONFIG.adsEnabled, false, "ads are switched off by default");
+    let calls = 0;
+    playAd(CONFIG.adSeconds.rewarded, () => { calls += 1; }, "rewarded");
+    eq(calls, 1, "continuation ran synchronously, once");
+    playAd(CONFIG.adSeconds.interstitial, () => { calls += 1; }, "interstitial");
+    eq(calls, 2, "no one-ad-at-a-time latch left behind");
+  });
   test("ads: VAST tag slots exist and default to null (placeholder until configured)", () => {
     ok("interstitial" in CONFIG.vastTags, "interstitial tag slot present");
     ok("rewarded" in CONFIG.vastTags, "rewarded tag slot present");

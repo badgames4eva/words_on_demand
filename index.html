@@ -14,7 +14,7 @@
        Publisher: ca-pub-5597688543726963 (badgames4eva). Verified against the
        host wordsondemand.badgames4eva.com, NOT the apex, which has no DNS. -->
   <meta name="google-adsense-account" content="ca-pub-5597688543726963">
-  <link rel="stylesheet" href="styles.css?v=44" />
+  <link rel="stylesheet" href="styles.css?v=45" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -84,10 +84,10 @@
 
     <p class="hint-bar">
       <button class="btn btn-hint focusable" data-nav-group="game-extra" id="btn-hint"
-              aria-label="Reveal a letter — watch an ad">
+              aria-label="Reveal a letter">
         <span class="hint-icon" aria-hidden="true">💡</span>
         <span class="hint-text">Reveal a Letter</span>
-        <span class="hint-badge">Watch Ad</span>
+        <span class="hint-badge" hidden>Watch Ad</span>
       </button>
     </p>
     <!-- Revealed-letter readout. Persists under the hint button until the next
@@ -339,7 +339,7 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v44</div>
+  <div id="build-badge">build v45</div>
 
   <!-- The Google IMA HTML5 SDK (~488 KB) is NOT requested here on purpose. It's
        lazy-loaded by ensureImaSdk() in game.js on the first "Play", so it never
@@ -350,7 +350,7 @@
   <!-- defer: don't block HTML parsing. Both keep document order and run after
        the document is parsed, so game.js's bottom-of-body boot block still finds
        #btn-play and the DOM it wires. -->
-  <script src="words.js?v=44" defer></script>
-  <script src="game.js?v=44" defer></script>
+  <script src="words.js?v=45" defer></script>
+  <script src="game.js?v=45" defer></script>
 </body>
 </html>

@@ -21,6 +21,11 @@ const CONFIG = {
     interstitial: 5,      // "one more round" break ad
     rewarded: 5,          // hint (rewarded video) — reward granted on completion
   },
+  // Master ad switch. While false, playAd() skips the ad screen entirely and
+  // runs the continuation immediately (hint reveals at once, "One More Round"
+  // starts the next puzzle), and the hint button drops its "Watch Ad" pill.
+  // Flip to true once a real ad network is wired up.
+  adsEnabled: false,
   // ---- Real ads (Google IMA HTML5 SDK, serving VAST) -----------------------
   // The whole ad integration is gated on these two things being present:
   //   1) the IMA SDK script (loaded from index.html), and
@@ -882,6 +887,11 @@ function renderResult() {
 // ---------------------------------------------------------------------------
 let adPlaying = false;
 function playAd(seconds, onDone, placement) {
+  // Ads switched off: no ad screen, no latch, no escape button — just continue.
+  if (!CONFIG.adsEnabled) {
+    onDone();
+    return;
+  }
   // Never start a second ad while one is showing. Without this guard, a stray
   // extra activation (double-click, Enter + click, a lingering timer) can stack
   // two ads — and on a real ad SDK, invoking it re-entrantly is undefined
@@ -1096,7 +1106,7 @@ function hintDisabledReason() {
 // reason so the player knows why (and, for the common case, that another hint
 // returns next row). Stays focusable so D-pad focus never strands.
 const HINT_COPY = {
-  available: { text: "Reveal a Letter", badge: "Watch Ad" },
+  available: { text: "Reveal a Letter", badge: CONFIG.adsEnabled ? "Watch Ad" : "" },
   used:      { text: "Next hint after your next guess", badge: "" },
   last:      { text: "Just one letter left!", badge: "" },
   finished:  { text: "Reveal a Letter", badge: "" },
@@ -1118,7 +1128,8 @@ function refreshHintButton() {
   btn.setAttribute("aria-label",
     reason === "used" ? "Your next hint unlocks after your next guess"
     : reason === "last" ? "No hint — only one letter left to find"
-    : "Reveal a letter — watch an ad");
+    : CONFIG.adsEnabled ? "Reveal a letter — watch an ad"
+    : "Reveal a letter");
 }
 
 // ---------------------------------------------------------------------------
@@ -1556,7 +1567,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v44 (Solved screen shows the word)");
+  console.log("Words on Demand — build v45 (ads switched off via CONFIG.adsEnabled)");
   wire();
   renderHomeStats();
   showScreen("home");
