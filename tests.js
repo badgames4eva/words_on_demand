@@ -270,6 +270,68 @@
     playAd(CONFIG.adSeconds.interstitial, () => { calls += 1; }, "interstitial");
     eq(calls, 2, "no one-ad-at-a-time latch left behind");
   });
+  // ---- native rewarded ads (Fire OS wrapper -> Google Mobile Ads SDK) ----
+  // The hint reward must follow ONLY a completed ad: native sends ad-reward then
+  // ad-closed. Closing early, no fill, or a failed show must never grant it.
+  function withNativeAds(fn) {
+    const realApi = window.WordsOnDemand, sent = [];
+    window.WordsOnDemand = { postMessage: (m) => sent.push(m), onMessage: null };
+    const snap = nativeAds.ready;
+    nativeAds.ready = true; nativeAds.pending = null;
+    try { fn(sent); } finally {
+      nativeAds.ready = snap; nativeAds.pending = null; window.WordsOnDemand = realApi;
+    }
+  }
+  test("native ads: ads-config from native turns ads on; off by default", () => {
+    eq(nativeAds.ready, false, "no native ad SDK by default");
+    nativeBridge.onNativeMessage({ type: "ads-config", enabled: true });
+    eq(nativeAds.ready, true);
+    nativeBridge.onNativeMessage({ type: "ads-config", enabled: false });
+    eq(nativeAds.ready, false);
+  });
+  test("native ads: rewarded request goes to native; reward only on ad-reward + ad-closed", () => {
+    withNativeAds((sent) => {
+      let granted = 0;
+      playAd(5, () => { granted += 1; }, "rewarded");
+      eq(sent.length, 1); eq(sent[0].type, "ad-request"); eq(sent[0].placement, "rewarded");
+      eq(granted, 0, "nothing granted while the ad is pending");
+      nativeBridge.onNativeMessage({ type: "ad-shown" });
+      eq(granted, 0, "still nothing once the ad is on screen");
+      nativeBridge.onNativeMessage({ type: "ad-reward" });
+      eq(granted, 0, "reward earned but the ad has not closed yet");
+      nativeBridge.onNativeMessage({ type: "ad-closed" });
+      eq(granted, 1, "granted exactly once after close");
+      nativeBridge.onNativeMessage({ type: "ad-closed" });
+      nativeBridge.onNativeMessage({ type: "ad-reward" });
+      eq(granted, 1, "duplicate/late events never grant twice");
+    });
+  });
+  test("native ads: closing early or no fill never grants the reward", () => {
+    withNativeAds(() => {
+      let granted = 0;
+      playAd(5, () => { granted += 1; }, "rewarded");
+      nativeBridge.onNativeMessage({ type: "ad-closed" });          // skipped: no ad-reward
+      eq(granted, 0, "closed without earning");
+      playAd(5, () => { granted += 1; }, "rewarded");
+      nativeBridge.onNativeMessage({ type: "ad-unavailable" });     // no fill
+      eq(granted, 0, "no fill");
+      playAd(5, () => { granted += 1; }, "rewarded");
+      nativeBridge.onNativeMessage({ type: "ad-reward" });
+      nativeBridge.onNativeMessage({ type: "ad-unavailable" });     // failed after reward event
+      eq(granted, 1, "reward was earned, so the close path grants once");
+    });
+  });
+  test("native ads: only one request in flight; interstitial does not use native", () => {
+    withNativeAds((sent) => {
+      playAd(5, () => {}, "rewarded"); playAd(5, () => {}, "rewarded");
+      eq(sent.length, 1, "second request ignored while one is pending");
+      nativeBridge.onNativeMessage({ type: "ad-closed" });
+      let ran = 0;
+      playAd(5, () => { ran += 1; }, "interstitial");
+      eq(ran, 1, "interstitial placement continues immediately (ads off for it)");
+      eq(sent.length, 1, "no native request for interstitials");
+    });
+  });
   test("ads: VAST tag slots exist and default to null (placeholder until configured)", () => {
     ok("interstitial" in CONFIG.vastTags, "interstitial tag slot present");
     ok("rewarded" in CONFIG.vastTags, "rewarded tag slot present");

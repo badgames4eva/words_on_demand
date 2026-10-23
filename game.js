@@ -886,7 +886,43 @@ function renderResult() {
 // once. An ad must never strand the player.
 // ---------------------------------------------------------------------------
 let adPlaying = false;
+
+// Native rewarded ads (Fire OS wrapper -> Google Mobile Ads SDK). The wrapper
+// announces `ads-config {enabled:true}` only when it was built WITH an ad SDK, so
+// the live site stays ad-free on any build that has none (CONFIG.adsEnabled can
+// stay false). `pending` is the in-flight request: { onDone, earned }.
+const nativeAds = { ready: false, pending: null };
+const adsActive = () => CONFIG.adsEnabled || nativeAds.ready;
+
+// Ask native to show a rewarded ad. The reward (onDone) is granted ONLY when native
+// reports `ad-reward` and then `ad-closed`: closing early, a failed show, or no fill
+// never grants it, so the ad can't be skipped for the bonus.
+function playNativeRewarded(onDone) {
+  if (nativeAds.pending) return; // one ad at a time
+  nativeAds.pending = { onDone, earned: false };
+  if (!nativeBridge.send("ad-request", { placement: "rewarded" })) {
+    nativeAds.pending = null;
+    toast("Ads aren't available right now.");
+  }
+}
+// Native finished (closed, or never showed). Return to the board with focus back on
+// the TV UI, then grant the reward only if it was earned.
+function finishNativeAd(failedMessage) {
+  const p = nativeAds.pending;
+  nativeAds.pending = null;
+  if (!p) return; // duplicate delivery of the same event
+  showScreen("game");
+  refreshHintButton();
+  if (p.earned) p.onDone();
+  else toast(failedMessage || "Watch the whole ad to reveal a letter.");
+}
+
 function playAd(seconds, onDone, placement) {
+  // Rewarded placement on a build with a native ad SDK: hand off to native.
+  if (placement === "rewarded" && nativeAds.ready) {
+    playNativeRewarded(onDone);
+    return;
+  }
   // Ads switched off: no ad screen, no latch, no escape button — just continue.
   if (!CONFIG.adsEnabled) {
     onDone();
@@ -1106,7 +1142,7 @@ function hintDisabledReason() {
 // reason so the player knows why (and, for the common case, that another hint
 // returns next row). Stays focusable so D-pad focus never strands.
 const HINT_COPY = {
-  available: { text: "Reveal a Letter", badge: CONFIG.adsEnabled ? "Watch Ad" : "" },
+  available: { text: "Reveal a Letter", badge: "" }, // "Watch Ad" is added at runtime when ads are active
   used:      { text: "Next hint after your next guess", badge: "" },
   last:      { text: "Just one letter left!", badge: "" },
   finished:  { text: "Reveal a Letter", badge: "" },
@@ -1115,7 +1151,8 @@ function refreshHintButton() {
   const btn = document.getElementById("btn-hint");
   if (!btn) return;
   const reason = hintDisabledReason();
-  const copy = HINT_COPY[reason || "available"];
+  const copy = Object.assign({}, HINT_COPY[reason || "available"]);
+  if (!reason && adsActive()) copy.badge = "Watch Ad";
 
   btn.classList.toggle("is-disabled", reason !== null);
   btn.setAttribute("aria-disabled", reason !== null ? "true" : "false");
@@ -1128,7 +1165,7 @@ function refreshHintButton() {
   btn.setAttribute("aria-label",
     reason === "used" ? "Your next hint unlocks after your next guess"
     : reason === "last" ? "No hint — only one letter left to find"
-    : CONFIG.adsEnabled ? "Reveal a letter — watch an ad"
+    : adsActive() ? "Reveal a letter — watch an ad"
     : "Reveal a letter");
 }
 
@@ -1520,6 +1557,16 @@ const nativeBridge = {
         setTimeout(() => { this._backHandledThisTick = false; }, 0);
         this.handleBack();
         break;
+      case "ads-config":  // native tells us whether it has an ad SDK
+        nativeAds.ready = !!msg.enabled;
+        refreshHintButton();
+        break;
+      case "ad-shown": pauseTimer(); break;                        // ad is on screen
+      case "ad-reward": if (nativeAds.pending) nativeAds.pending.earned = true; break;
+      case "ad-closed": finishNativeAd(); break;                   // reward granted here iff earned
+      case "ad-unavailable":                                       // no fill / failed to show
+        finishNativeAd("No ad available right now. Try again in a moment.");
+        break;
       case "pause":  pauseTimer(); break;   // freeze the solve clock while backgrounded
       case "resume": if (activeScreen === "game") resumeTimer(); break;
     }
@@ -1567,7 +1614,7 @@ function nextUnplayedOffset(fromOffset) {
 // harness (which has no #btn-play etc.), skip wiring so the logic can be
 // exercised in isolation.
 if (typeof document !== "undefined" && document.getElementById("btn-play")) {
-  console.log("Words on Demand — build v46 (privacy policy updated for ads-off release)");
+  console.log("Words on Demand — build v47 (native rewarded-ad flow; inert unless the wrapper has an ad SDK)");
   wire();
   renderHomeStats();
   showScreen("home");
@@ -1587,6 +1634,6 @@ if (typeof module !== "undefined" && module.exports) {
     showPolicy, scrollPolicy, refreshPolicyHint, resetPrivacyNote,
     POLICY_SCROLL_FRACTION,
     renderRowWipeNote,
-    nativeBridge, openModal, closeModal, isModalOpen,
+    nativeBridge, nativeAds, playAd, openModal, closeModal, isModalOpen,
     showScreen, getActiveScreen };
 }

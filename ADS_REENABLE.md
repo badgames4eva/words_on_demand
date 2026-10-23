@@ -68,3 +68,29 @@ files if you prefer git over the copies.
   no CTV support and risks account bans; Google's docs fetched on 2026-10-22 neither
   confirmed nor denied). Get an answer in writing from AdMob support before building on it.
 - AppLovin MAX is listed by Amazon as Fire OS compatible (older SDK version).
+
+## Native AdMob path: built and tested (2026-10-22), NOT shipped
+
+Code exists but is **off by default** so the submitted build is unchanged.
+
+- Web (`game.js`, build v47): `nativeAds`, `playNativeRewarded()`, `finishNativeAd()` and the
+  `ads-config` / `ad-shown` / `ad-reward` / `ad-closed` / `ad-unavailable` messages. The reward
+  (`onDone`) is granted only after `ad-reward` **and** `ad-closed`. Inert unless the wrapper
+  sends `ads-config {enabled:true}`, so `CONFIG.adsEnabled` can stay `false`.
+- Wrapper (`words_on_demand_tv/fireos`): `AdsController`, `src/ads/` (AdMob `RewardedAdsManager`,
+  preload + backoff, `npa=1`) vs `src/noads/` (no-op). Build with `-PadsEnabled=true`
+  (minSdk 24, links `play-services-ads:25.5.0`). Default build links no ad SDK.
+- IDs: pass `-PadmobAppId` / `-PadmobRewardedUnitId`; defaults are Google's sample IDs.
+  Real IDs (not secret): app `ca-app-pub-5597688543726963~6245882057`, rewarded unit
+  `ca-app-pub-5597688543726963/9336621814` (AdMob app "Words On Demand", unit `wod_rewarded_hint`).
+- `app-ads.txt` already authorises `google.com, pub-5597688543726963` (same publisher ID), no change needed.
+
+**Finding:** on the Fire TV test device (AFTSSS, API 28, no Google Play services) the SDK
+initialises and sends requests without crashing, but **every rewarded request returns
+"No fill" (error 3, no adapter responses)**, for Google's sample unit and for the real unit,
+with and without `npa`, and with the device registered as a test device. So no ad was ever
+shown and the show/reward/close path is untested on hardware. Likely cause is Google not
+serving AdMob to this TV device, consistent with the older note that AdMob has no CTV support.
+Next: ask AdMob support (Fire TV / Amazon Appstore), and try a phone or emulator to confirm
+the code path itself works. Test locally with: serve the web dir on `127.0.0.1`, `adb reverse
+tcp:8000 tcp:8000`, build with `-PwebUrl=http://localhost:8000/`.
