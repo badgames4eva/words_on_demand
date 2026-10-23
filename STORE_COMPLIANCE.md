@@ -18,15 +18,30 @@ forms. Every answer below is grounded in an audit of what the code actually does
 
 > ### Read this before you submit
 >
-> These answers describe the app **with ads enabled** — i.e. once real VAST tags are
-> pasted into `CONFIG.vastTags` (see [ADS_SETUP.md](ADS_SETUP.md)). In the current build
-> those tags are `null`, so the shipped app contacts **no third party at all** and shares
-> nothing.
+> **Current release (web build v45+, apps v1.0.0): ads are OFF** (`CONFIG.adsEnabled =
+> false`, no ad SDK, no real ad network). The shipped app contacts **no third party at
+> all** and shares nothing. For this release answer the stores as follows, and ignore the
+> "Yes" ads / ad-ID answers in sections 1–4 below:
 >
-> Declare it **as it will behave when ads are live**. Both stores treat a
-> later-than-declared behavior change as a policy violation, and "we'll turn ads on next
-> week" is exactly that. Declaring ads you haven't switched on yet is allowed and harmless;
-> the reverse is not.
+> | Question | Answer for the ads-off release |
+> |---|---|
+> | Contains ads? | **No** |
+> | Ad network / SDK | **None** |
+> | Collects or shares any user data (Play Data Safety, Amazon data questions)? | **No** — nothing collected, nothing shared |
+> | Advertising ID usage (Amazon) | **No** |
+> | Sharing personal info with third parties (content rating) | **No** |
+> | Target audience | General audience, not directed to children under 13 (unchanged) |
+>
+> Everything else (content-rating answers, privacy URL, publisher website, TV-only
+> remote-navigable declaration) is unchanged.
+>
+> **Sections 1–4 below describe the app with Google Ad Manager ads enabled**, a plan that
+> was later dropped (Ad Manager is not being used; the replacement network is undecided).
+> Treat them as a template, not as current answers. **When real ads ship, update the
+> declarations in the same release**: both stores treat a later-than-declared behavior
+> change as a policy violation, so flip these answers to match the new network before
+> setting `adsEnabled` to `true` (and revisit [PRIVACY.md](PRIVACY.md) and the in-app
+> policy).
 
 ---
 

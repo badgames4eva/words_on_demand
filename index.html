@@ -14,7 +14,7 @@
        Publisher: ca-pub-5597688543726963 (badgames4eva). Verified against the
        host wordsondemand.badgames4eva.com, NOT the apex, which has no DNS. -->
   <meta name="google-adsense-account" content="ca-pub-5597688543726963">
-  <link rel="stylesheet" href="styles.css?v=45" />
+  <link rel="stylesheet" href="styles.css?v=46" />
 </head>
 <body>
   <!-- ============================ HOME ============================ -->
@@ -161,11 +161,11 @@
 
       <h3 class="about-head">About &amp; Privacy</h3>
       <p class="about-text">
-        A new puzzle every day, free and ad-supported, by <strong>badgames4eva</strong>.
+        A new puzzle every day, free, by <strong>badgames4eva</strong>.
       </p>
       <p class="about-text">
         <strong>No sign-in, no tracking.</strong> Your streak stays on this device and is
-        never sent anywhere. Ads are <strong>non-personalized</strong>.
+        never sent anywhere. The app shows <strong>no ads</strong>.
       </p>
 
       <!-- Opens the full policy on the in-app #policy screen — no browser, no
@@ -221,7 +221,7 @@
   <section id="policy" class="screen">
     <div class="policy-inner">
       <h2 class="policy-title">Privacy Policy</h2>
-      <p class="policy-dates">Effective July 27, 2026 · Last updated July 27, 2026
+      <p class="policy-dates">Effective July 27, 2026 · Last updated October 22, 2026
         · <span class="url">wordsondemand.badgames4eva.com/privacy</span></p>
 
       <div class="policy-doc focusable" id="policy-doc" data-nav-group="policy"
@@ -236,11 +236,8 @@
             or any account information. There are no accounts and no login.</li>
           <li>We run <strong>no server</strong> that receives your data. Your game
             progress stays on your device.</li>
-          <li>We show <strong>ads</strong>, and our ad provider (Google) receives limited
-            technical information to deliver them. That is the only way information
-            leaves your device.</li>
-          <li>Ads are <strong>non-personalized only</strong>. We build no advertising
-            profile about you and don't use your advertising ID for interest targeting.</li>
+          <li>The app currently shows <strong>no ads</strong> and contains no advertising
+            SDK. It does not share information with any third party.</li>
           <li>The app is for a <strong>general audience</strong>. It is not directed to
             children under 13.</li>
         </ul>
@@ -253,24 +250,9 @@
           is no backup and no way for us to restore it.</p>
 
         <h3>Advertising</h3>
-        <p>The app is free, supported by video ads between rounds and by the optional
-          "watch an ad to reveal a letter" hint you choose to start. Ads are delivered
-          with <strong>Google Ad Manager</strong> and the Google IMA SDK.</p>
-        <p>To deliver and measure an ad, and to prevent fraud, Google may receive your IP
-          address (from which an <strong>approximate</strong>, city-or-region-level
-          location can be inferred — never precise GPS; the app has no location
-          permission), device and technical details such as device type, OS, screen size
-          and language, your device's <strong>advertising identifier</strong>, and ad
-          events (requested, shown, completed).</p>
-        <p>We do not use your advertising identifier to track you across apps or sites,
-          and we do not sell or share your information for cross-context behavioral
-          advertising. Google's own handling is covered by the Google Privacy Policy at
-          <span class="url">policies.google.com/privacy</span>.</p>
-        <p>You can limit ad tracking on the device itself. Fire TV:
-          <strong>Settings → Preferences → Advertising ID</strong>. Android TV / Google
-          TV: <strong>Settings → Privacy → Ads</strong>. These are your device's
-          controls, not ours; they limit how your advertising ID may be used rather than
-          stopping ads.</p>
+        <p>The app currently shows <strong>no ads</strong> and uses no advertising or
+          analytics software, so no advertising ID or ad information is collected or
+          shared. If we add ads in the future, we will update this policy first.</p>
 
         <h3>What we do not do</h3>
         <ul>
@@ -294,21 +276,19 @@
           rights to access, correct, or delete your personal information. Because the app
           has no accounts and no backend, <strong>we hold no personal information about
           you</strong> to access, correct, or delete. The game data above is on your
-          device and fully under your control — clear the app's data to erase it. For
-          information held by Google as our ad provider, see Google's own controls.</p>
+          device and fully under your control — clear the app's data to erase it.</p>
         <p>We do not sell or share personal information for cross-context behavioral
           advertising, so there is no "Do Not Sell or Share" action for us to offer.</p>
 
         <h3>Security, retention, international</h3>
         <p>Because game data never leaves your device, its security depends on your
-          device's own protections. We retain no user data on any server. Ad-related
-          information is retained by Google under Google's policies, and Google may
-          process ad requests in countries other than your own under its own safeguards.</p>
+          device's own protections. We retain no user data on any server, and we do not
+          transfer your information internationally.</p>
 
         <h3>Changes</h3>
         <p>If this policy changes we update the "Last updated" date above and post the
           revised version at the URL below. Material changes — for example adding
-          analytics or enabling personalized ads — appear here before taking effect.</p>
+          analytics or adding advertising — appear here before taking effect.</p>
 
         <h3>Contact</h3>
         <p><strong>badgames4eva</strong> — <span class="url">badgameseva@gmail.com</span><br />
@@ -339,7 +319,7 @@
 
   <!-- Build badge — a quick on-screen confirmation of which code is loaded
        (no console needed, works on a TV too). -->
-  <div id="build-badge">build v45</div>
+  <div id="build-badge">build v46</div>
 
   <!-- The Google IMA HTML5 SDK (~488 KB) is NOT requested here on purpose. It's
        lazy-loaded by ensureImaSdk() in game.js on the first "Play", so it never
@@ -350,7 +330,7 @@
   <!-- defer: don't block HTML parsing. Both keep document order and run after
        the document is parsed, so game.js's bottom-of-body boot block still finds
        #btn-play and the DOM it wires. -->
-  <script src="words.js?v=45" defer></script>
-  <script src="game.js?v=45" defer></script>
+  <script src="words.js?v=46" defer></script>
+  <script src="game.js?v=46" defer></script>
 </body>
 </html>
